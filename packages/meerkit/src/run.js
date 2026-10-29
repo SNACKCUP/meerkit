@@ -5,9 +5,9 @@ const isWin = process.platform === "win32";
 
 /**
  * 명령을 실행하고 출력은 로그 파일에 쌓는다. 화면에는 내보내지 않는다.
- * 끝나면 { code, tail }을 돌려준다. tail은 마지막 몇 줄(실패 원인 안내용).
+ * 끝나면 { code, tail }을 돌려준다. tail은 마지막 tailLines줄(실패 원인 안내용, 기본 12).
  */
-export function runLogged(cmd, args, { cwd, logFile, env, label } = {}) {
+export function runLogged(cmd, args, { cwd, logFile, env, label, tailLines = 12 } = {}) {
   return new Promise((resolvePromise) => {
     const log = logFile ? createWriteStream(logFile, { flags: "a" }) : null;
     log?.write(`\n$ ${[cmd, ...args].join(" ")}   (cwd: ${cwd ?? "."})${label ? `  # ${label}` : ""}\n`);
@@ -19,7 +19,7 @@ export function runLogged(cmd, args, { cwd, logFile, env, label } = {}) {
       for (const line of text.split(/\r?\n/)) {
         if (line.trim()) tail.push(line);
       }
-      if (tail.length > 12) tail.splice(0, tail.length - 12);
+      if (tail.length > tailLines) tail.splice(0, tail.length - tailLines);
     };
     child.stdout.on("data", onData);
     child.stderr.on("data", onData);
