@@ -10,6 +10,7 @@ import { checkDocker, checkNode, checkPorts, checkUv } from "../src/checks.js";
 import { ensureEnvFiles } from "../src/env.js";
 import { createProject, validateProjectName } from "../src/init.js";
 import { findProjectRoot } from "../src/setup.js";
+import { missingSetup } from "../src/start.js";
 
 const tmp = () => mkdtemp(join(tmpdir(), "meerkit-test-"));
 
@@ -102,4 +103,22 @@ test("diagnose: 로그에서 흔한 원인을 알아본다", () => {
   assert.match(diagnose(["getaddrinfo ENOTFOUND registry.npmjs.org"]).join(), /네트워크/);
   assert.deepEqual(diagnose(["알 수 없는 오류"]), []);
   assert.deepEqual(diagnose(), []);
+});
+
+test("포트 점검: 쓰고 있는 프로그램을 알려 준다", async () => {
+  const [r] = await checkPorts([{ port: 8000, name: "백엔드" }], async () => false, () => "python3 (PID 4242)");
+  assert.equal(r.ok, false);
+  assert.match(r.detail, /python3 \(PID 4242\)/);
+  const [free] = await checkPorts([{ port: 8000, name: "백엔드" }], async () => true);
+  assert.equal(free.ok, true);
+});
+
+test("start: 세팅이 안 끝난 프로젝트는 빠진 것을 알려 준다", async () => {
+  const dir = await tmp();
+  assert.equal(missingSetup(dir).length, 3);
+  await mkdir(join(dir, "backend"), { recursive: true });
+  await writeFile(join(dir, "backend", ".env"), "A=1\n");
+  await mkdir(join(dir, "backend", ".venv"));
+  await mkdir(join(dir, "frontend", "node_modules"), { recursive: true });
+  assert.deepEqual(missingSetup(dir), []);
 });

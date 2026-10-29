@@ -61,6 +61,7 @@ npx @snackcup/meerkit setup
 - 이미 끝난 단계는 건너뛰므로 다시 실행해도 안전합니다.
 - 전체 로그는 \`meerkit-setup.log\`에 남습니다.
 - 서버를 켜지 않고 세팅만 하려면 \`npx @snackcup/meerkit setup --no-start\`
+- 세팅이 끝난 뒤 서버만 켜려면 \`npx @snackcup/meerkit start\` (DB, 백엔드 8000, 프론트엔드 3000)
 
 | 서비스 | 주소 |
 | --- | --- |

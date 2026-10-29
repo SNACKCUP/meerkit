@@ -4,6 +4,7 @@ import { printChecks, runToolChecks } from "./checks.js";
 import { runInit } from "./init.js";
 import { PACKAGE_JSON } from "./paths.js";
 import { runSetup } from "./setup.js";
+import { runStart } from "./start.js";
 import { bold, cyan, info } from "./ui.js";
 
 const HELP = `
@@ -14,6 +15,7 @@ ${bold("meerkit")} — Meerkit 스타터킷 CLI
   ${cyan("npx @snackcup/meerkit init <폴더이름>")}     새 프로젝트를 만듭니다
   ${cyan("npx @snackcup/meerkit setup")}              프로젝트 폴더 안에서 실행: 환경 점검, 설치, DB, 관리자 계정, 서버 시작
       --no-start   서버는 켜지 않고 세팅만 합니다
+  ${cyan("npx @snackcup/meerkit start")}              세팅이 끝난 프로젝트의 서버만 켭니다 (DB, 백엔드 8000, 프론트엔드 3000)
   ${cyan("npx @snackcup/meerkit check")}              개발 환경(Node, uv, Docker)만 점검합니다
   ${cyan("npx @snackcup/meerkit --version")}
 `;
@@ -25,6 +27,8 @@ export async function main(argv) {
       return runInit(rest);
     case "setup":
       return runSetup(rest);
+    case "start":
+      return runStart(rest);
     case "check":
       return printChecks(await runToolChecks()) ? 0 : 1;
     case "-v":

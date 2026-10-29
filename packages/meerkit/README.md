@@ -15,6 +15,7 @@ npx @snackcup/meerkit setup
 | `meerkit init <폴더>` | 템플릿(frontend, backend, docker-compose.yml)을 펼칩니다. 폴더 이름은 소문자·숫자·`-`·`_` |
 | `meerkit setup` | 프로젝트 폴더 안에서 실행. 환경 점검 → 설치 → `.env`와 비밀키 → DB → 마이그레이션 → 관리자 계정 → 서버 시작 |
 | `meerkit setup --no-start` | 서버는 켜지 않고 세팅만 |
+| `meerkit start` | 세팅이 끝난 프로젝트의 서버만 켭니다: DB 확인 → 백엔드(8000) → 프론트엔드(3000). 설치·마이그레이션은 하지 않습니다 |
 | `meerkit check` | Node.js, npm, uv, Docker(설치와 실행 여부)만 점검 |
 
 ### setup이 하는 일
