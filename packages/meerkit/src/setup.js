@@ -39,7 +39,7 @@ function printFailure({ title, cause, hint, logPath }) {
   }
   for (const tip of diagnose(cause)) console.log(`  원인으로 보이는 것: ${tip}`);
   if (hint) console.log(`  해결: ${hint}`);
-  console.log(`  다시 실행: ${cyan("npx meerkit setup")}  (이미 끝난 단계는 건너뜁니다)`);
+  console.log(`  다시 실행: ${cyan("npx @snackcup/meerkit setup")}  (이미 끝난 단계는 건너뜁니다)`);
   console.log(`  전체 로그: ${logPath}`);
 }
 
@@ -119,7 +119,7 @@ export async function runSetup(args) {
   const root = findProjectRoot(dirIdx >= 0 ? args[dirIdx + 1] : process.cwd());
   if (!root) {
     fail("Meerkit 프로젝트 폴더에서 실행해 주세요. (docker-compose.yml, frontend, backend가 있는 폴더)");
-    info(`  예: ${cyan("cd my-app")} 한 뒤 ${cyan("npx meerkit setup")}`);
+    info(`  예: ${cyan("cd my-app")} 한 뒤 ${cyan("npx @snackcup/meerkit setup")}`);
     return 1;
   }
   const logPath = join(root, LOG_NAME);
@@ -184,6 +184,6 @@ export async function runSetup(args) {
     front.on("close", resolvePromise);
   });
   console.log("");
-  info(`서버를 종료했습니다. 다시 켜려면 ${cyan("npx meerkit setup")} 을 다시 실행하세요 (이미 끝난 단계는 건너뜁니다).`);
+  info(`서버를 종료했습니다. 다시 켜려면 ${cyan("npx @snackcup/meerkit setup")} 을 다시 실행하세요 (이미 끝난 단계는 건너뜁니다).`);
   return 0;
 }

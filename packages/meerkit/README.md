@@ -3,9 +3,9 @@
 Meerkit 스타터킷 CLI. 프로젝트를 만들고(`init`), 개발 환경을 한 번에 세팅합니다(`setup`).
 
 ```bash
-npx create-meerkit my-app     # 또는 npx meerkit init my-app
+npx create-meerkit my-app     # 또는 npx @snackcup/meerkit init my-app
 cd my-app
-npx meerkit setup
+npx @snackcup/meerkit setup
 ```
 
 ## 명령
@@ -32,8 +32,8 @@ npx meerkit setup
 
 | 패키지 | 역할 |
 | --- | --- |
-| `meerkit` (이 폴더) | 본체. `template/`에 프로젝트 템플릿을 함께 넣어 배포합니다 |
-| `create-meerkit` (`../create-meerkit`) | `npx create-meerkit`의 입구. `meerkit`의 `init`을 실행합니다 |
+| `@snackcup/meerkit` (이 폴더) | 본체. `template/`에 프로젝트 템플릿을 함께 넣어 배포합니다 |
+| `create-meerkit` (`../create-meerkit`) | `npx create-meerkit`의 입구. `@snackcup/meerkit`의 `init`을 실행합니다 |
 
 `npx create-xxx`는 이름이 정확히 `create-xxx`인 패키지를 찾기 때문에 두 개가 필요합니다.
 
@@ -55,10 +55,10 @@ npm test -w meerkit
 ## 배포 체크리스트 (사람이 합니다)
 
 1. 라이선스: MIT (저장소 루트 `LICENSE`, 두 `package.json`에 반영됨). 바꾸려면 세 곳을 함께 고칩니다.
-2. `npm login` (2단계 인증 켜기). 이름 `meerkit`, `create-meerkit`이 비어 있는지 `npm view <이름>`으로 확인합니다.
-3. 버전 올리기 (두 패키지 모두, `create-meerkit`의 `meerkit` 의존 범위도 맞추기)
+2. `npm login` (2단계 인증 켜기). 이름 `@snackcup/meerkit`(npm 조직 `snackcup`), `create-meerkit`이 비어 있는지 `npm view <이름>`으로 확인합니다.
+3. 버전 올리기 (두 패키지 모두, `create-meerkit`의 `@snackcup/meerkit` 의존 범위도 맞추기)
 4. `npm pack --dry-run -w meerkit`로 들어가는 파일 목록 확인 (`.env`, 비밀 값이 없어야 함)
-5. 로컬 시험: `npm pack -w meerkit -w create-meerkit` → 임시 폴더에 설치 → `npx create-meerkit my-app` → `npx meerkit setup`
+5. 로컬 시험: `npm pack -w meerkit -w create-meerkit` → 임시 폴더에 설치 → `npx create-meerkit my-app` → `npx @snackcup/meerkit setup`
 6. `npm publish -w meerkit --access public` **먼저**, 그다음 `npm publish -w create-meerkit --access public` (순서가 바뀌면 `create-meerkit`이 없는 `meerkit`을 찾습니다)
 7. 깨끗한 곳에서 `npx create-meerkit@latest my-app`으로 확인
 

@@ -54,13 +54,13 @@ const README = `# MeerKit 프로젝트
 ## 시작하기
 
 \`\`\`bash
-npx meerkit setup
+npx @snackcup/meerkit setup
 \`\`\`
 
 환경 점검(Node.js, uv, Docker Desktop) → 라이브러리 설치 → 환경 변수와 비밀키 생성 → DB 실행 → 마이그레이션 → 로컬용 관리자 계정 → 서버 시작까지 자동으로 진행합니다.
 - 이미 끝난 단계는 건너뛰므로 다시 실행해도 안전합니다.
 - 전체 로그는 \`meerkit-setup.log\`에 남습니다.
-- 서버를 켜지 않고 세팅만 하려면 \`npx meerkit setup --no-start\`
+- 서버를 켜지 않고 세팅만 하려면 \`npx @snackcup/meerkit setup --no-start\`
 
 | 서비스 | 주소 |
 | --- | --- |
