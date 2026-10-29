@@ -202,7 +202,7 @@ async function main() {
   // 3) 루트 README, .gitignore (setup 로그 제외 추가)
   await writeFile(join(out, "README.md"), README);
   const gi = join(out, ".gitignore");
-  if (existsSync(gi)) await writeFile(gi, (await readFile(gi, "utf8")).trimEnd() + "\n\n# meerkit setup\nmeerkit-setup.log\n");
+  if (existsSync(gi)) await writeFile(gi, (await readFile(gi, "utf8")).trimEnd() + "\n\n# meerkit\nmeerkit-setup.log\nmeerkit-test.log\n");
   await renameGitignores(out); // npm 패키지에서 .gitignore가 빠지지 않게 _gitignore로
 
   // 4) 확인: 비밀 값/서비스 코드/팀 자료가 없는지

@@ -328,3 +328,11 @@ test("update: 설치가 다시 쓰는 lock 파일은 비교하지 않는다", as
   assert.ok(!plan.entries.some((e) => e.rel.endsWith("package-lock.json") || e.rel.endsWith("uv.lock")));
   assert.ok(plan.entries.every((e) => e.action === "same"));
 });
+
+test("test: 힌트는 그 원인으로 보일 때만 붙는다", async () => {
+  const { shouldHint } = await import("../src/verify.js");
+  const step = { hintWhen: /OperationalError|connection refused/i };
+  assert.equal(shouldHint(step, ["E   AssertionError: 일부러 실패"]), false);
+  assert.equal(shouldHint(step, ["sqlalchemy.exc.OperationalError: connection refused"]), true);
+  assert.equal(shouldHint({}, ["아무 출력"]), true); // 조건이 없는 단계는 항상 보여 준다
+});
