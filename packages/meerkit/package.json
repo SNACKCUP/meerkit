@@ -1,6 +1,6 @@
 {
   "name": "@snackcup/meerkit",
-  "version": "0.1.0-rc.3",
+  "version": "0.1.0-rc.4",
   "description": "Meerkit 스타터킷 CLI: 프로젝트 생성(init)과 개발 환경 자동 세팅(setup)",
   "type": "module",
   "bin": {
