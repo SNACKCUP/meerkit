@@ -13,9 +13,19 @@ npx @snackcup/meerkit setup
 | 명령 | 하는 일 |
 | --- | --- |
 | `meerkit init <폴더>` | 템플릿(frontend, backend, docker-compose.yml)을 펼칩니다. 폴더 이름은 소문자·숫자·`-`·`_` |
-| `meerkit setup` | 프로젝트 폴더 안에서 실행. 환경 점검 → 설치 → `.env`와 비밀키 → DB → 마이그레이션 → 관리자 계정 → 서버 시작 |
-| `meerkit setup --no-start` | 서버는 켜지 않고 세팅만 |
+| `meerkit setup` | 프로젝트 폴더 안에서 실행. 환경 점검 → 설치 → `.env`와 비밀키 → DB → 마이그레이션 → 관리자 계정 → 서버 시작. `--no-start`는 서버를 켜지 않고 세팅만 |
+| `meerkit start` | 세팅이 끝난 프로젝트의 서버만 켭니다: DB 확인 → 백엔드(8000) → 프론트엔드(3000). `--no-db`는 DB를 건드리지 않음. Ctrl+C로 끄면 자식 프로세스까지 정리 |
+| `meerkit stop` | 이 프로젝트의 서버를 끕니다. 다른 프로그램이 쓰는 포트는 건드리지 않고 알려 줍니다. `--db`는 DB도 멈춤 (macOS/Linux) |
+| `meerkit status` | 세팅 여부, DB, 마이그레이션 최신 여부, 3000·8000 포트 소유자와 응답을 한눈에 봅니다 |
 | `meerkit check` | Node.js, npm, uv, Docker(설치와 실행 여부)만 점검 |
+| `meerkit env check [--prod]` | `backend/.env`를 점검합니다. 값은 출력하지 않습니다. `--prod`는 운영 기준 |
+| `meerkit logs [-n 줄수] [--path]` | `meerkit-setup.log` 마지막 부분 / 경로 |
+| `meerkit db migrate` / `seed` / `reset` | 마이그레이션 / 로컬 관리자 계정 / 로컬 DB를 지우고 처음부터(프로젝트 폴더 이름 입력 필요, `localhost:5432`에서만) |
+| `meerkit add feature <이름>` | 백엔드·테스트·프론트 화면 뼈대를 만들고 `api.py`에 등록. `--dry-run`은 파일 목록만 |
+| `meerkit test [--backend\|--frontend] [--fast]` | 백엔드 ruff·pytest, 프론트엔드 lint·build를 한 번에 |
+| `meerkit open [web\|api]` | 브라우저로 열기 |
+
+`meerkit --help`로 전체 목록, `meerkit <명령> --help`로 각 명령의 사용법·옵션·예를 볼 수 있습니다. 도움말은 `src/help.js`의 `COMMANDS`에서 만들어지니, 명령을 추가하면 거기에도 적으세요.
 
 ### setup이 하는 일
 

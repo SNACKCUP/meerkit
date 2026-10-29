@@ -75,16 +75,37 @@ export function isPortFree(port) {
   });
 }
 
+/** 포트를 쓰는 프로그램을 알아낸다 (macOS/Linux의 lsof). 알 수 없으면 null. 예: "node (PID 1234)" */
+export function whoUsesPort(port) {
+  if (process.platform === "win32") return null;
+  const r = spawnSync("lsof", ["-nP", `-iTCP:${port}`, "-sTCP:LISTEN", "-Fpc"], { encoding: "utf8" });
+  if (r.status !== 0 || !r.stdout) return null;
+  let pid = null;
+  let name = null;
+  for (const line of r.stdout.split("\n")) {
+    if (line.startsWith("p") && pid === null) pid = line.slice(1);
+    if (line.startsWith("c") && name === null) name = line.slice(1);
+  }
+  return pid ? `${name ?? "알 수 없음"} (PID ${pid})` : null;
+}
+
 /** 서버가 쓸 포트가 비어 있는지 본다. */
-export async function checkPorts(ports, free = isPortFree) {
+export async function checkPorts(ports, free = isPortFree, who = whoUsesPort) {
   const results = [];
   for (const { port, name } of ports) {
     const isFree = await free(port);
-    results.push(
-      isFree
-        ? { id: `port-${port}`, label: `${port} 포트 (${name})`, ok: true, detail: "사용 가능" }
-        : { id: `port-${port}`, label: `${port} 포트 (${name})`, ok: false, detail: "이미 사용 중", fix: `${port} 포트를 쓰는 프로그램을 종료하세요. (macOS/Linux: lsof -i :${port}, Windows: netstat -ano | findstr :${port})` },
-    );
+    if (isFree) {
+      results.push({ id: `port-${port}`, label: `${port} 포트 (${name})`, ok: true, detail: "사용 가능" });
+      continue;
+    }
+    const user = who(port);
+    results.push({
+      id: `port-${port}`,
+      label: `${port} 포트 (${name})`,
+      ok: false,
+      detail: user ? `이미 사용 중: ${user}` : "이미 사용 중",
+      fix: `${port} 포트를 쓰는 프로그램을 종료하세요. 이전에 띄운 서버일 수 있습니다. (macOS/Linux: lsof -nP -iTCP:${port} -sTCP:LISTEN, Windows: netstat -ano | findstr :${port})`,
+    });
   }
   return results;
 }

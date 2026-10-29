@@ -4,6 +4,7 @@ import { join, resolve } from "node:path";
 
 import { checkPorts, printChecks, runToolChecks } from "./checks.js";
 import { ensureEnvFiles } from "./env.js";
+import { clearPidFile, writePidFile } from "./proc.js";
 import { runLogged } from "./run.js";
 import { bold, cyan, dim, fail, info, ok, step, warn } from "./ui.js";
 
@@ -30,7 +31,7 @@ export function diagnose(lines = []) {
   return tips;
 }
 
-function printFailure({ title, cause, hint, logPath }) {
+export function printFailure({ title, cause, hint, logPath, retry = "setup" }) {
   console.log("");
   fail(bold(`${title} 단계에서 멈췄습니다.`));
   if (cause?.length) {
@@ -39,7 +40,7 @@ function printFailure({ title, cause, hint, logPath }) {
   }
   for (const tip of diagnose(cause)) console.log(`  원인으로 보이는 것: ${tip}`);
   if (hint) console.log(`  해결: ${hint}`);
-  console.log(`  다시 실행: ${cyan("npx @snackcup/meerkit setup")}  (이미 끝난 단계는 건너뜁니다)`);
+  console.log(`  다시 실행: ${cyan(`npx @snackcup/meerkit ${retry}`)}${retry === "setup" ? "  (이미 끝난 단계는 건너뜁니다)" : ""}`);
   console.log(`  전체 로그: ${logPath}`);
 }
 
@@ -102,7 +103,8 @@ async function waitForUrl(url, ms) {
 }
 
 function startServer(label, cmd, args, cwd) {
-  const child = spawn(cmd, args, { cwd, shell: isWin, stdio: ["ignore", "pipe", "pipe"] });
+  // macOS/Linux에서는 별도 프로세스 그룹으로 띄워, 종료할 때 uvicorn·next 자식까지 함께 끈다 (아니면 포트가 남는다)
+  const child = spawn(cmd, args, { cwd, shell: isWin, detached: !isWin, stdio: ["ignore", "pipe", "pipe"] });
   const prefix = dim(`[${label}] `);
   const pipe = (stream, out) =>
     stream.on("data", (buf) => {
@@ -111,6 +113,54 @@ function startServer(label, cmd, args, cwd) {
   pipe(child.stdout, process.stdout);
   pipe(child.stderr, process.stderr);
   return child;
+}
+
+/** 백엔드(8000)와 프론트엔드(3000)를 켜고, 종료될 때까지 기다린다. setup과 start가 함께 쓴다. */
+export async function startServers(root) {
+  info("\n서버를 시작합니다. 끝내려면 Ctrl+C 를 누르세요.");
+  const back = startServer("backend", "uv", ["run", "uvicorn", "app.main:app", "--reload", "--port", "8000"], join(root, "backend"));
+  const front = startServer("frontend", "npm", ["run", "dev"], join(root, "frontend"));
+  // stop 명령이 찾을 수 있게 프로세스 그룹을 기록해 둔다 (종료하면 지운다)
+  if (!isWin) await writePidFile(root, { backend: back.pid, frontend: front.pid });
+  // 켜지는 도중에 서버가 먼저 꺼지면(포트 충돌 등) 알려 준다
+  const warnOnEarlyExit = (label, child) =>
+    child.on("close", (code) => {
+      if (code) warn(`${label} 서버가 종료되었습니다 (종료 코드 ${code}). 위의 [${label === "백엔드" ? "backend" : "frontend"}] 로그에서 원인을 확인하세요.`);
+    });
+  warnOnEarlyExit("백엔드", back);
+  warnOnEarlyExit("프론트엔드", front);
+  const stop = () => {
+    for (const child of [back, front]) {
+      try {
+        if (isWin) child.kill();
+        else process.kill(-child.pid, "SIGTERM");
+      } catch {
+        /* 이미 종료됨 */
+      }
+    }
+  };
+  const quit = () => {
+    stop();
+    clearPidFile(root).finally(() => process.exit(0));
+  };
+  process.on("SIGINT", quit);
+  process.on("SIGTERM", quit);
+  const [b, f] = await Promise.all([waitForUrl("http://localhost:8000/health", 60_000), waitForUrl("http://localhost:3000", 90_000)]);
+  console.log("");
+  if (b && f) {
+    ok(`프론트엔드  ${cyan("http://localhost:3000")}`);
+    ok(`백엔드 API  ${cyan("http://localhost:8000/docs")}`);
+  } else {
+    warn("서버가 제때 켜지지 않았습니다. 위의 [backend] / [frontend] 로그를 확인하세요.");
+  }
+  await new Promise((resolvePromise) => {
+    back.on("close", resolvePromise);
+    front.on("close", resolvePromise);
+  });
+  await clearPidFile(root);
+  console.log("");
+  info(`서버를 종료했습니다. 다시 켜려면 ${cyan("npx @snackcup/meerkit start")} 를 실행하세요.`);
+  return 0;
 }
 
 export async function runSetup(args) {
@@ -148,42 +198,9 @@ export async function runSetup(args) {
   ok(bold("세팅이 끝났습니다."));
   warn("관리자 계정은 로컬 개발용입니다. 아이디와 비밀번호는 backend/.env 의 SEED_ADMIN_USER_ID, SEED_ADMIN_PASSWORD 에 있고, 운영에서는 반드시 바꾸세요.");
   if (noStart) {
-    info(`서버는 직접 켜세요: ${cyan("cd backend && uv run uvicorn app.main:app --reload")}  /  ${cyan("cd frontend && npm run dev")}`);
-    info(`DB는 ${cyan("docker compose up -d db")} 로 켭니다.`);
+    info(`서버는 ${cyan("npx @snackcup/meerkit start")} 로 켭니다. (직접 켜려면 ${cyan("cd backend && uv run uvicorn app.main:app --reload")}  /  ${cyan("cd frontend && npm run dev")}, DB는 ${cyan("docker compose up -d db")})`);
     return 0;
   }
 
-  info("\n서버를 시작합니다. 끝내려면 Ctrl+C 를 누르세요.");
-  const back = startServer("backend", "uv", ["run", "uvicorn", "app.main:app", "--reload", "--port", "8000"], join(root, "backend"));
-  const front = startServer("frontend", "npm", ["run", "dev"], join(root, "frontend"));
-  // 켜지는 도중에 서버가 먼저 꺼지면(포트 충돌 등) 알려 준다
-  const warnOnEarlyExit = (label, child) =>
-    child.on("close", (code) => {
-      if (code) warn(`${label} 서버가 종료되었습니다 (종료 코드 ${code}). 위의 [${label === "백엔드" ? "backend" : "frontend"}] 로그에서 원인을 확인하세요.`);
-    });
-  warnOnEarlyExit("백엔드", back);
-  warnOnEarlyExit("프론트엔드", front);
-  const stop = () => {
-    back.kill();
-    front.kill();
-  };
-  process.on("SIGINT", () => {
-    stop();
-    process.exit(0);
-  });
-  const [b, f] = await Promise.all([waitForUrl("http://localhost:8000/health", 60_000), waitForUrl("http://localhost:3000", 90_000)]);
-  console.log("");
-  if (b && f) {
-    ok(`프론트엔드  ${cyan("http://localhost:3000")}`);
-    ok(`백엔드 API  ${cyan("http://localhost:8000/docs")}`);
-  } else {
-    warn("서버가 제때 켜지지 않았습니다. 위의 [backend] / [frontend] 로그를 확인하세요.");
-  }
-  await new Promise((resolvePromise) => {
-    back.on("close", resolvePromise);
-    front.on("close", resolvePromise);
-  });
-  console.log("");
-  info(`서버를 종료했습니다. 다시 켜려면 ${cyan("npx @snackcup/meerkit setup")} 을 다시 실행하세요 (이미 끝난 단계는 건너뜁니다).`);
-  return 0;
+  return startServers(root);
 }
