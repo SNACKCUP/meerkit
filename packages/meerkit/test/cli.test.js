@@ -309,3 +309,22 @@ test("start --port: 포트 옵션 읽기와 검사", async () => {
   assert.match(parsePorts(["--port"]).error, /없음/);
   assert.match(parsePorts(["--port", "9000", "--api-port", "9000"]).error, /같을 수 없/);
 });
+
+test("update: 설치가 다시 쓰는 lock 파일은 비교하지 않는다", async () => {
+  const { planUpdate } = await import("../src/update.js");
+  const { readManifest } = await import("../src/manifest.js");
+  const tpl = await tmp();
+  await mkdir(join(tpl, "frontend"));
+  await mkdir(join(tpl, "backend"));
+  await writeFile(join(tpl, "frontend", "package.json"), JSON.stringify({ name: "meerkit" }));
+  await writeFile(join(tpl, "frontend", "package-lock.json"), "lock1");
+  await writeFile(join(tpl, "backend", "uv.lock"), "lock1");
+  await writeFile(join(tpl, "docker-compose.yml"), "x");
+  const root = join(await tmp(), "my-app");
+  await createProject(root, { templateDir: tpl });
+  await writeFile(join(root, "frontend", "package-lock.json"), "rewritten by npm install");
+  await writeFile(join(tpl, "backend", "uv.lock"), "lock2");
+  const plan = await planUpdate(root, { templateDir: tpl, manifest: await readManifest(root) });
+  assert.ok(!plan.entries.some((e) => e.rel.endsWith("package-lock.json") || e.rel.endsWith("uv.lock")));
+  assert.ok(plan.entries.every((e) => e.action === "same"));
+});
