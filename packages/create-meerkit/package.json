@@ -1,0 +1,33 @@
+{
+  "name": "create-meerkit",
+  "version": "0.1.0",
+  "description": "npx create-meerkit my-app: Meerkit 스타터킷 프로젝트를 만듭니다",
+  "type": "module",
+  "bin": {
+    "create-meerkit": "bin/create-meerkit.js"
+  },
+  "files": [
+    "bin"
+  ],
+  "dependencies": {
+    "meerkit": "^0.1.0"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SNACKCUP/meerkit.git",
+    "directory": "packages/create-meerkit"
+  },
+  "keywords": [
+    "meerkit",
+    "create",
+    "starter-kit"
+  ],
+  "homepage": "https://github.com/SNACKCUP/meerkit#readme",
+  "bugs": {
+    "url": "https://github.com/SNACKCUP/meerkit/issues"
+  }
+}

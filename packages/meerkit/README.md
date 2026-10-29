@@ -1,0 +1,65 @@
+# meerkit
+
+Meerkit 스타터킷 CLI. 프로젝트를 만들고(`init`), 개발 환경을 한 번에 세팅합니다(`setup`).
+
+```bash
+npx create-meerkit my-app     # 또는 npx meerkit init my-app
+cd my-app
+npx meerkit setup
+```
+
+## 명령
+
+| 명령 | 하는 일 |
+| --- | --- |
+| `meerkit init <폴더>` | 템플릿(frontend, backend, docker-compose.yml)을 펼칩니다. 폴더 이름은 소문자·숫자·`-`·`_` |
+| `meerkit setup` | 프로젝트 폴더 안에서 실행. 환경 점검 → 설치 → `.env`와 비밀키 → DB → 마이그레이션 → 관리자 계정 → 서버 시작 |
+| `meerkit setup --no-start` | 서버는 켜지 않고 세팅만 |
+| `meerkit check` | Node.js, npm, uv, Docker(설치와 실행 여부)만 점검 |
+
+### setup이 하는 일
+
+1. **점검:** Node.js 20 이상, npm, uv, Docker/Compose/Docker Desktop 실행 여부, 3000·8000 포트. 하나라도 문제면 원인과 설치 링크를 보여 주고 멈춥니다.
+2. `npm install` (frontend) → `uv sync` (backend)
+3. `backend/.env` 생성과 JWT 비밀키 발급 (이미 있는 값은 덮어쓰지 않음), `frontend/.env.local` 생성
+4. `docker compose up -d --wait db`
+5. `alembic upgrade head`, 로컬용 관리자 계정 생성
+6. 백엔드(8000)와 프론트엔드(3000) 시작
+
+이미 끝난 단계는 건너뛰므로 다시 실행해도 안전합니다. 전체 로그는 프로젝트 루트의 `meerkit-setup.log`(비밀 값은 기록하지 않음)에 남고, 실패하면 원인·해결 방법·다시 실행할 명령·로그 위치를 보여 줍니다.
+
+## 패키지 구조
+
+| 패키지 | 역할 |
+| --- | --- |
+| `meerkit` (이 폴더) | 본체. `template/`에 프로젝트 템플릿을 함께 넣어 배포합니다 |
+| `create-meerkit` (`../create-meerkit`) | `npx create-meerkit`의 입구. `meerkit`의 `init`을 실행합니다 |
+
+`npx create-xxx`는 이름이 정확히 `create-xxx`인 패키지를 찾기 때문에 두 개가 필요합니다.
+
+## 템플릿
+
+`template/`은 `scripts/sync-template.mjs`가 저장소에서 만듭니다 (git이 추적하는 파일만 복사). 직접 고치지 마세요. 배포 직전(`npm pack`, `npm publish`)에 자동으로 다시 만들어집니다.
+
+- 빼는 것: 팀 문서(`docs/`), `CLAUDE.md`, `.claude/`, `.env`, `node_modules`, 예시 기능의 테스트 등
+- 사용 설명서(프론트의 `/docs` 화면과 `src/meerkit/docs`)는 통째로 뺍니다. 설명서는 별도 사이트로 배포하고, 앱에는 웰컴 페이지만 남습니다. 설명서 주소를 `NEXT_PUBLIC_DOCS_URL`에 넣으면 웰컴 페이지에 Docs 버튼이 나타납니다.
+- 템플릿에 서비스 코드 흔적(`maemusae`, `gsap` 등)이나 비밀 파일이 있으면 스크립트가 실패합니다.
+
+```bash
+cd packages
+npm install                  # workspace 연결
+npm run sync-template -w meerkit
+npm test -w meerkit
+```
+
+## 배포 체크리스트 (사람이 합니다)
+
+1. 라이선스: MIT (저장소 루트 `LICENSE`, 두 `package.json`에 반영됨). 바꾸려면 세 곳을 함께 고칩니다.
+2. `npm login` (2단계 인증 켜기). 이름 `meerkit`, `create-meerkit`이 비어 있는지 `npm view <이름>`으로 확인합니다.
+3. 버전 올리기 (두 패키지 모두, `create-meerkit`의 `meerkit` 의존 범위도 맞추기)
+4. `npm pack --dry-run -w meerkit`로 들어가는 파일 목록 확인 (`.env`, 비밀 값이 없어야 함)
+5. 로컬 시험: `npm pack -w meerkit -w create-meerkit` → 임시 폴더에 설치 → `npx create-meerkit my-app` → `npx meerkit setup`
+6. `npm publish -w meerkit --access public` **먼저**, 그다음 `npm publish -w create-meerkit --access public` (순서가 바뀌면 `create-meerkit`이 없는 `meerkit`을 찾습니다)
+7. 깨끗한 곳에서 `npx create-meerkit@latest my-app`으로 확인
+
+배포는 공개되고 되돌리기 어렵습니다 (72시간 안에만 `npm unpublish` 가능).
