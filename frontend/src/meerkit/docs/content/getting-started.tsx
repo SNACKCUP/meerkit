@@ -118,7 +118,7 @@ export function Installation() {
       <P>폴더 구조만 생성합니다. 이 단계에서는 설치나 실행을 하지 않습니다.</P>
       <PkgTabs command="npx create-meerkit my-app" />
       <P>프로젝트 안으로 이동해 세팅을 실행합니다. 의존성 설치, 환경 변수 생성, DB 실행, 마이그레이션, 서버 실행까지 한 번에 진행됩니다.</P>
-      <CodeBlock title="bash" code={"cd my-app\nnpx meerkit setup"} />
+      <CodeBlock title="bash" code={"cd my-app\nnpx @snackcup/meerkit setup"} />
       <H2>What setup does</H2>
       <OL>
         <li>Node, Python, uv, Docker가 있는지 확인합니다. 없으면 설치 안내 후 멈춥니다.</li>

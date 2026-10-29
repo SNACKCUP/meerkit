@@ -68,7 +68,7 @@ export async function runInit(args) {
     info("");
     info("다음 순서로 진행하세요.");
     info(`  ${cyan(`cd ${target}`)}`);
-    info(`  ${cyan("npx meerkit setup")}   ${"# 의존성 설치, DB, 관리자 계정까지 자동으로 세팅합니다"}`);
+    info(`  ${cyan("npx @snackcup/meerkit setup")}   ${"# 의존성 설치, DB, 관리자 계정까지 자동으로 세팅합니다"}`);
     return 0;
   } catch (e) {
     fail(e.message);

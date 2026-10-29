@@ -10,7 +10,7 @@
     "bin"
   ],
   "dependencies": {
-    "meerkit": "^0.1.0"
+    "@snackcup/meerkit": "^0.1.0"
   },
   "engines": {
     "node": ">=20"
