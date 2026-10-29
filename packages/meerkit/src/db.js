@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { createInterface } from "node:readline/promises";
 
+import { activePorts } from "./ports.js";
 import { listenersOf } from "./proc.js";
 import { findProjectRoot } from "./setup.js";
 import { missingSetup } from "./start.js";
@@ -79,8 +80,9 @@ export async function runDb(args) {
     info(`  backend/.env 의 DATABASE_URL 이 ${target ? `${target.host}:${target.port}` : "없거나 읽을 수 없음"} 입니다. 다른 DB를 지우는 사고를 막기 위해 멈춥니다.`);
     return 1;
   }
-  if (listenersOf(8000).length) {
-    fail("백엔드(8000)가 켜져 있습니다. 먼저 서버를 끄세요: npx @snackcup/meerkit stop");
+  const apiPort = (await activePorts(root)).api;
+  if (listenersOf(apiPort).length) {
+    fail(`백엔드(${apiPort})가 켜져 있습니다. 먼저 서버를 끄세요: npx @snackcup/meerkit stop`);
     return 1;
   }
   const name = basename(root);

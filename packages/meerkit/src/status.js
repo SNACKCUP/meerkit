@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 
 import { belongsTo, isWin, listenersOf } from "./proc.js";
+import { activePorts } from "./ports.js";
 import { findProjectRoot } from "./setup.js";
 import { missingSetup } from "./start.js";
 import { bold, cyan, dim, fail, info, ok, warn } from "./ui.js";
@@ -74,11 +75,12 @@ export async function runStatus(args) {
     else warn("마이그레이션: 확인하지 못함 (backend/.env의 DATABASE_URL을 확인하세요)");
   }
 
-  const be = portLine(root, 8000, "백엔드");
-  const fe = portLine(root, 3000, "프론트엔드");
+  const ports = await activePorts(root);
+  const be = portLine(root, ports.api, "백엔드");
+  const fe = portLine(root, ports.web, "프론트엔드");
   for (const [p, label, url, okCodes] of [
-    [be, "백엔드", "http://localhost:8000/health", [200]],
-    [fe, "프론트엔드", "http://localhost:3000", [200]],
+    [be, "백엔드", `http://localhost:${ports.api}/health`, [200]],
+    [fe, "프론트엔드", `http://localhost:${ports.web}`, [200]],
   ]) {
     if (!p.running) {
       info(`${dim("·")} ${p.text}`);
