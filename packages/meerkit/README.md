@@ -24,6 +24,7 @@ npx @snackcup/meerkit setup
 | `meerkit add feature <이름>` | 백엔드·테스트·프론트 화면 뼈대를 만들고 `api.py`에 등록. `--dry-run`은 파일 목록만 |
 | `meerkit test [--backend\|--frontend] [--fast]` | 백엔드 ruff·pytest, 프론트엔드 lint·build를 한 번에 |
 | `meerkit open [web\|api]` | 브라우저로 열기 |
+| `meerkit update [--apply]` | 새 킷 버전의 변경을 가져옵니다. 처음 받은 파일 기록(`.meerkit/manifest.json`)과 비교해, 안 고친 파일은 갱신하고 고친 파일은 `파일.meerkit-new`로 옆에 둡니다. 기본은 미리보기 |
 
 `meerkit --help`로 전체 목록, `meerkit <명령> --help`로 각 명령의 사용법·옵션·예를 볼 수 있습니다. 도움말은 `src/help.js`의 `COMMANDS`에서 만들어지니, 명령을 추가하면 거기에도 적으세요.
 

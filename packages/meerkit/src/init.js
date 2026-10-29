@@ -2,6 +2,7 @@ import { cp, mkdir, readdir, readFile, rename, stat, writeFile } from "node:fs/p
 import { existsSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 
+import { kitVersion, templateHashes, writeManifest } from "./manifest.js";
 import { TEMPLATE_DIR } from "./paths.js";
 import { bold, cyan, fail, info, ok } from "./ui.js";
 
@@ -52,6 +53,8 @@ export async function createProject(target, { templateDir = TEMPLATE_DIR } = {})
     pkg.name = name;
     await writeFile(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
   }
+  // 받은 버전과 파일별 해시를 적어 둔다 (나중에 update가 내가 고친 파일을 알아보는 기준)
+  await writeManifest(dest, await kitVersion(), await templateHashes(name, templateDir));
   return dest;
 }
 
