@@ -1,0 +1,6 @@
+{
+  "name": "meerkit-packages",
+  "private": true,
+  "description": "Meerkit CLI 패키지 모음 (npm workspaces). meerkit: 본체, create-meerkit: npx create-meerkit 입구",
+  "workspaces": ["meerkit", "create-meerkit"]
+}

@@ -1,0 +1,42 @@
+{
+  "name": "meerkit",
+  "version": "0.1.0",
+  "description": "Meerkit 스타터킷 CLI: 프로젝트 생성(init)과 개발 환경 자동 세팅(setup)",
+  "type": "module",
+  "bin": {
+    "meerkit": "bin/meerkit.js"
+  },
+  "exports": {
+    "./init": "./src/init.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "template"
+  ],
+  "scripts": {
+    "sync-template": "node scripts/sync-template.mjs",
+    "prepack": "node scripts/sync-template.mjs",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SNACKCUP/meerkit.git",
+    "directory": "packages/meerkit"
+  },
+  "keywords": [
+    "meerkit",
+    "starter-kit",
+    "fastapi",
+    "nextjs",
+    "auth"
+  ],
+  "homepage": "https://github.com/SNACKCUP/meerkit#readme",
+  "bugs": {
+    "url": "https://github.com/SNACKCUP/meerkit/issues"
+  }
+}
