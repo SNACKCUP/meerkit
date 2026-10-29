@@ -122,3 +122,89 @@ test("start: 세팅이 안 끝난 프로젝트는 빠진 것을 알려 준다", 
   await mkdir(join(dir, "frontend", "node_modules"), { recursive: true });
   assert.deepEqual(missingSetup(dir), []);
 });
+
+import { featureFiles, registerInApi, validateFeatureName } from "../src/add.js";
+import { main } from "../src/cli.js";
+import { databaseTarget } from "../src/db.js";
+import { checkEnv, parseEnv } from "../src/envcheck.js";
+import { COMMANDS, helpAll, helpOf } from "../src/help.js";
+
+test("도움말: 모든 명령에 설명이 있고, 목록에 모두 나온다", () => {
+  const all = helpAll();
+  for (const c of COMMANDS) {
+    assert.match(all, new RegExp(`\\b${c.name}\\b`));
+    assert.match(helpOf(c.name), /사용법/);
+  }
+  assert.equal(helpOf("없는명령"), null);
+});
+
+test("cli: <명령> --help 는 명령을 실행하지 않고 도움말만 보여 준다", async () => {
+  assert.equal(await main(["stop", "--help"]), 0);
+  assert.equal(await main(["help", "db"]), 0);
+  assert.equal(await main(["help", "없는명령"]), 1);
+  assert.equal(await main(["없는명령"]), 1);
+});
+
+test("add: 기능 이름 검사", () => {
+  assert.equal(validateFeatureName("meetings"), null);
+  assert.equal(validateFeatureName("meeting_notes"), null);
+  assert.match(validateFeatureName("Meetings"), /쓸 수 없는/);
+  assert.match(validateFeatureName("1abc"), /쓸 수 없는/);
+  assert.match(validateFeatureName("auth"), /예약/);
+  assert.match(validateFeatureName(""), /입력/);
+});
+
+test("add: 만들 파일 경로와 URL 이름", () => {
+  const files = featureFiles("meeting_notes");
+  assert.ok("backend/app/features/meeting_notes/router.py" in files);
+  assert.ok("frontend/src/app/(service)/meeting-notes/page.tsx" in files);
+  assert.match(files["backend/app/features/meeting_notes/router.py"], /prefix="\/meeting-notes"/);
+  assert.match(files["backend/app/features/meeting_notes/schemas.py"], /class MeetingNotesRead/);
+});
+
+test("add: api.py에 import와 include_router를 넣고, 다시 넣어도 중복되지 않는다", () => {
+  const api = `from fastapi import APIRouter
+
+from app.features.llm_demo.router import router as llm_demo_router
+from app.social.router import router as social_router
+
+api_router = APIRouter()
+
+# 서비스 기능
+api_router.include_router(llm_demo_router)
+`;
+  const once = registerInApi(api, "meetings");
+  assert.match(once, /from app\.features\.meetings\.router import router as meetings_router/);
+  assert.ok(once.trimEnd().endsWith("api_router.include_router(meetings_router)"));
+  assert.ok(once.indexOf("meetings.router") > once.indexOf("llm_demo.router"));
+  assert.ok(once.indexOf("meetings.router") < once.indexOf("social.router"));
+  assert.equal(registerInApi(once, "meetings"), once);
+  assert.equal(registerInApi("print('모양이 다름')", "meetings"), null);
+});
+
+test("env: 예시 값 그대로의 비밀키는 항상 오류, 운영 기준은 로컬 설정을 오류로 본다", () => {
+  const env = parseEnv("# 주석\nJWT_SECRET_KEY=change-me-to-a-random-string\nAPP_ENV=local\nCORS_ORIGINS=\"http://localhost:3000\"\nMAIL_BACKEND=console\n");
+  assert.equal(env.CORS_ORIGINS, "http://localhost:3000");
+  const local = checkEnv(env);
+  assert.ok(local.results.some((r) => r.level === "error" && /JWT_SECRET_KEY/.test(r.text)));
+  assert.ok(local.hidden > 0);
+  assert.ok(!local.results.some((r) => /APP_ENV/.test(r.text)));
+  const prod = checkEnv(env, { prod: true });
+  assert.ok(prod.results.some((r) => r.level === "error" && /APP_ENV/.test(r.text)));
+  const good = checkEnv(parseEnv(`JWT_SECRET_KEY=${"a".repeat(48)}\n`));
+  assert.ok(good.results.some((r) => r.level === "ok" && /JWT_SECRET_KEY/.test(r.text)));
+  // 값은 결과 문장에 들어가지 않는다
+  assert.ok(!JSON.stringify(good).includes("aaaaaaaaaa"));
+});
+
+test("db: DATABASE_URL에서 호스트·포트를 읽고 로컬인지 알려 준다", async () => {
+  const dir = await tmp();
+  await mkdir(join(dir, "backend"), { recursive: true });
+  await writeFile(join(dir, "backend", ".env"), "DATABASE_URL=postgresql+psycopg://starter:pw@localhost:5432/starter\n");
+  assert.deepEqual(await databaseTarget(dir), { host: "localhost", port: 5432, local: true });
+  await writeFile(join(dir, "backend", ".env"), "DATABASE_URL=postgresql+psycopg://u:p@db.example.com:6543/postgres\n");
+  const remote = await databaseTarget(dir);
+  assert.equal(remote.local, false);
+  assert.equal(remote.port, 6543);
+  assert.equal(await databaseTarget(await tmp()), null);
+});

@@ -4,6 +4,7 @@ import { join, resolve } from "node:path";
 
 import { checkPorts, printChecks, runToolChecks } from "./checks.js";
 import { ensureEnvFiles } from "./env.js";
+import { clearPidFile, writePidFile } from "./proc.js";
 import { runLogged } from "./run.js";
 import { bold, cyan, dim, fail, info, ok, step, warn } from "./ui.js";
 
@@ -119,6 +120,8 @@ export async function startServers(root) {
   info("\n서버를 시작합니다. 끝내려면 Ctrl+C 를 누르세요.");
   const back = startServer("backend", "uv", ["run", "uvicorn", "app.main:app", "--reload", "--port", "8000"], join(root, "backend"));
   const front = startServer("frontend", "npm", ["run", "dev"], join(root, "frontend"));
+  // stop 명령이 찾을 수 있게 프로세스 그룹을 기록해 둔다 (종료하면 지운다)
+  if (!isWin) await writePidFile(root, { backend: back.pid, frontend: front.pid });
   // 켜지는 도중에 서버가 먼저 꺼지면(포트 충돌 등) 알려 준다
   const warnOnEarlyExit = (label, child) =>
     child.on("close", (code) => {
@@ -136,14 +139,12 @@ export async function startServers(root) {
       }
     }
   };
-  process.on("SIGINT", () => {
+  const quit = () => {
     stop();
-    process.exit(0);
-  });
-  process.on("SIGTERM", () => {
-    stop();
-    process.exit(0);
-  });
+    clearPidFile(root).finally(() => process.exit(0));
+  };
+  process.on("SIGINT", quit);
+  process.on("SIGTERM", quit);
   const [b, f] = await Promise.all([waitForUrl("http://localhost:8000/health", 60_000), waitForUrl("http://localhost:3000", 90_000)]);
   console.log("");
   if (b && f) {
@@ -156,6 +157,7 @@ export async function startServers(root) {
     back.on("close", resolvePromise);
     front.on("close", resolvePromise);
   });
+  await clearPidFile(root);
   console.log("");
   info(`서버를 종료했습니다. 다시 켜려면 ${cyan("npx @snackcup/meerkit start")} 를 실행하세요.`);
   return 0;

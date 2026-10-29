@@ -42,20 +42,22 @@ export async function runStart(args) {
   ]);
   if (!printChecks([...tools, ...ports])) return 1;
 
-  // DB는 이미 켜져 있으면 그대로 두고, 꺼져 있으면 켠다
-  const logPath = join(root, LOG_NAME);
-  info("\n데이터베이스를 확인합니다 (docker compose).");
-  const r = await runLogged("docker", ["compose", "up", "-d", "--wait", "db"], { cwd: root, logFile: logPath, label: "start: docker compose up" });
-  if (r.code !== 0) {
-    printFailure({
-      title: "데이터베이스 실행",
-      cause: r.tail,
-      hint: "Docker Desktop이 실행 중인지, 5432 포트를 다른 프로그램이 쓰고 있지 않은지 확인하세요.",
-      logPath,
-      retry: "start",
-    });
-    return 1;
+  // DB는 이미 켜져 있으면 그대로 두고, 꺼져 있으면 켠다 (--no-db 이면 건드리지 않는다)
+  if (!args.includes("--no-db")) {
+    const logPath = join(root, LOG_NAME);
+    info("\n데이터베이스를 확인합니다 (docker compose).");
+    const r = await runLogged("docker", ["compose", "up", "-d", "--wait", "db"], { cwd: root, logFile: logPath, label: "start: docker compose up" });
+    if (r.code !== 0) {
+      printFailure({
+        title: "데이터베이스 실행",
+        cause: r.tail,
+        hint: "Docker Desktop이 실행 중인지, 5432 포트를 다른 프로그램이 쓰고 있지 않은지 확인하세요.",
+        logPath,
+        retry: "start",
+      });
+      return 1;
+    }
+    ok("데이터베이스 실행 중");
   }
-  ok("데이터베이스 실행 중");
   return startServers(root);
 }
