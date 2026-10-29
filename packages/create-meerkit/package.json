@@ -1,6 +1,6 @@
 {
   "name": "create-meerkit",
-  "version": "0.1.0-rc.2",
+  "version": "0.1.0-rc.3",
   "description": "npx create-meerkit my-app: Meerkit 스타터킷 프로젝트를 만듭니다",
   "type": "module",
   "bin": {
@@ -10,7 +10,7 @@
     "bin"
   ],
   "dependencies": {
-    "@snackcup/meerkit": "^0.1.0-rc.2"
+    "@snackcup/meerkit": "^0.1.0-rc.3"
   },
   "engines": {
     "node": ">=20"
