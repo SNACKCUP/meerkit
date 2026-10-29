@@ -9,7 +9,9 @@ import { TEMPLATE_DIR } from "./paths.js";
 import { bold, cyan, dim, fail, info, ok, warn } from "./ui.js";
 
 // 바뀌면 설치를 다시 해야 하는 파일
-const INSTALL_FILES = new Set(["frontend/package.json", "frontend/package-lock.json", "backend/pyproject.toml", "backend/uv.lock"]);
+const INSTALL_FILES = new Set(["frontend/package.json", "backend/pyproject.toml"]);
+// 설치할 때마다 도구가 다시 쓰는 파일이라 내가 고친 것과 구분할 수 없다. 비교에서 빼고, package.json·pyproject.toml 이 바뀌면 설치 때 맞춰진다.
+const GENERATED_FILES = new Set(["frontend/package-lock.json", "backend/uv.lock"]);
 const NEW_SUFFIX = ".meerkit-new";
 
 /**
@@ -29,6 +31,7 @@ export async function planUpdate(root, { templateDir = TEMPLATE_DIR, manifest = 
     const nextBuf = render(rel, await readFile(abs), name);
     const next = sha(nextBuf);
     nextFiles[rel] = next;
+    if (GENERATED_FILES.has(rel)) continue;
     const curPath = join(root, rel);
     const cur = existsSync(curPath) ? sha(await readFile(curPath)) : null;
     const b = base?.[rel] ?? null;
