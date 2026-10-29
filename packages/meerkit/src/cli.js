@@ -13,6 +13,7 @@ import { runSetup } from "./setup.js";
 import { runStart } from "./start.js";
 import { runStatus } from "./status.js";
 import { runStop } from "./stop.js";
+import { runUpdate } from "./update.js";
 import { runTest } from "./verify.js";
 import { info } from "./ui.js";
 
@@ -29,6 +30,7 @@ const RUN = {
   add: runAdd,
   test: runTest,
   open: runOpen,
+  update: runUpdate,
 };
 
 export async function main(argv) {

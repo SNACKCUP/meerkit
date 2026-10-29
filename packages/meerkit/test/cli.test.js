@@ -208,3 +208,93 @@ test("db: DATABASE_URL에서 호스트·포트를 읽고 로컬인지 알려 준
   assert.equal(remote.port, 6543);
   assert.equal(await databaseTarget(await tmp()), null);
 });
+
+test("update: 만든 프로젝트는 manifest가 있고 바로 업데이트하면 바뀔 것이 없다", async () => {
+  const { planUpdate } = await import("../src/update.js");
+  const { readManifest } = await import("../src/manifest.js");
+  const tpl = await tmp();
+  await mkdir(join(tpl, "frontend"), { recursive: true });
+  await mkdir(join(tpl, "backend"));
+  await writeFile(join(tpl, "frontend", "package.json"), JSON.stringify({ name: "meerkit" }));
+  await writeFile(join(tpl, "frontend", "a.txt"), "A1");
+  await writeFile(join(tpl, "backend", "b.txt"), "B1");
+  await writeFile(join(tpl, "docker-compose.yml"), "x");
+  await writeFile(join(tpl, "_gitignore"), "node_modules");
+  const root = join(await tmp(), "my-app");
+  await createProject(root, { templateDir: tpl });
+  const manifest = await readManifest(root);
+  assert.ok(manifest.files["frontend/a.txt"]);
+  assert.ok(manifest.files[".gitignore"]);
+  const plan = await planUpdate(root, { templateDir: tpl, manifest });
+  assert.ok(plan.entries.every((e) => e.action === "same"), JSON.stringify(plan.entries.map((e) => [e.rel, e.action])));
+});
+
+test("update: 안 고친 파일은 갱신, 고친 파일은 유지, 둘 다 바뀌면 충돌, 새 파일은 추가", async () => {
+  const { planUpdate, applyUpdate } = await import("../src/update.js");
+  const { readManifest } = await import("../src/manifest.js");
+  const tpl = await tmp();
+  await mkdir(join(tpl, "frontend"));
+  await mkdir(join(tpl, "backend"));
+  await writeFile(join(tpl, "frontend", "package.json"), JSON.stringify({ name: "meerkit" }));
+  for (const f of ["untouched", "edited", "both", "deleted", "gone"]) await writeFile(join(tpl, "backend", f), "v1");
+  await writeFile(join(tpl, "docker-compose.yml"), "x");
+  const root = join(await tmp(), "my-app");
+  await createProject(root, { templateDir: tpl });
+  const manifest = await readManifest(root);
+
+  // 사용자가 고친 것
+  await writeFile(join(root, "backend", "edited"), "mine");
+  await writeFile(join(root, "backend", "both"), "mine");
+  const { rm } = await import("node:fs/promises");
+  await rm(join(root, "backend", "deleted"));
+  // 킷이 새 버전을 낸 것
+  await writeFile(join(tpl, "backend", "untouched"), "v2");
+  await writeFile(join(tpl, "backend", "both"), "v2");
+  await writeFile(join(tpl, "backend", "new"), "v2");
+  await writeFile(join(tpl, "backend", "deleted"), "v2");
+  await rm(join(tpl, "backend", "gone"));
+
+  const plan = await planUpdate(root, { templateDir: tpl, manifest });
+  const act = Object.fromEntries(plan.entries.map((e) => [e.rel, e.action]));
+  assert.equal(act["backend/untouched"], "update");
+  assert.equal(act["backend/edited"], "keep");
+  assert.equal(act["backend/both"], "conflict");
+  assert.equal(act["backend/new"], "add");
+  assert.equal(act["backend/deleted"], "deleted");
+  assert.equal(act["backend/gone"], "removed");
+  assert.equal(act["docker-compose.yml"], "same");
+  assert.equal(act["frontend/package.json"], "same"); // 프로젝트 이름은 비교에서 제외된다
+
+  await applyUpdate(root, plan, "9.9.9");
+  assert.equal(await readFile(join(root, "backend", "untouched"), "utf8"), "v2");
+  assert.equal(await readFile(join(root, "backend", "edited"), "utf8"), "mine");
+  assert.equal(await readFile(join(root, "backend", "both"), "utf8"), "mine");
+  assert.equal(await readFile(join(root, "backend", "both.meerkit-new"), "utf8"), "v2");
+  assert.equal(await readFile(join(root, "backend", "new"), "utf8"), "v2");
+  assert.equal(existsSync(join(root, "backend", "deleted")), false);
+  assert.equal((await readManifest(root)).kitVersion, "9.9.9");
+
+  // 적용 후 다시 실행하면 내가 고친 파일은 유지, 충돌 파일도 다시 덮이지 않는다
+  const again = await planUpdate(root, { templateDir: tpl, manifest: await readManifest(root) });
+  const act2 = Object.fromEntries(again.entries.map((e) => [e.rel, e.action]));
+  assert.equal(act2["backend/both"], "keep");
+  assert.equal(act2["backend/untouched"], "same");
+});
+
+test("update: 기록이 없으면 다른 파일은 충돌, 같은 파일은 그대로", async () => {
+  const { planUpdate } = await import("../src/update.js");
+  const tpl = await tmp();
+  await mkdir(join(tpl, "frontend"));
+  await mkdir(join(tpl, "backend"));
+  await writeFile(join(tpl, "frontend", "package.json"), JSON.stringify({ name: "meerkit" }));
+  await writeFile(join(tpl, "backend", "same"), "v1");
+  await writeFile(join(tpl, "backend", "diff"), "v1");
+  await writeFile(join(tpl, "docker-compose.yml"), "x");
+  const root = join(await tmp(), "my-app");
+  await createProject(root, { templateDir: tpl });
+  await writeFile(join(root, "backend", "diff"), "other");
+  const plan = await planUpdate(root, { templateDir: tpl, manifest: null });
+  const act = Object.fromEntries(plan.entries.map((e) => [e.rel, e.action]));
+  assert.equal(act["backend/same"], "same");
+  assert.equal(act["backend/diff"], "conflict");
+});
