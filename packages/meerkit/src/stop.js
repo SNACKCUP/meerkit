@@ -1,15 +1,11 @@
 import { spawnSync } from "node:child_process";
 
+import { DEFAULT_PORTS, activePorts } from "./ports.js";
 import { findProjectRoot } from "./setup.js";
 import { belongsTo, clearPidFile, isAlive, isWin, listenersOf, readPidFile, signal, sleep, treeOf } from "./proc.js";
 import { bold, cyan, dim, fail, info, ok, warn } from "./ui.js";
 
-const PORTS = [
-  { port: 8000, name: "백엔드" },
-  { port: 3000, name: "프론트엔드" },
-];
-
-/** 이 프로젝트의 서버(3000·8000)를 끈다. 다른 프로그램이 쓰는 포트는 건드리지 않는다. */
+/** 이 프로젝트의 서버를 끈다. 기록된 포트(start --port)와 기본 포트(3000·8000)를 모두 본다. 다른 프로그램이 쓰는 포트는 건드리지 않는다. */
 export async function runStop(args) {
   const dirIdx = args.indexOf("--dir");
   const root = findProjectRoot(dirIdx >= 0 ? args[dirIdx + 1] : process.cwd());
@@ -21,6 +17,16 @@ export async function runStop(args) {
     fail("Windows에서는 stop을 아직 지원하지 않습니다. 서버를 띄운 터미널에서 Ctrl+C 를 누르세요.");
     return 1;
   }
+
+  const used = await activePorts(root);
+  const PORTS = [
+    ...new Map([
+      [used.api, "백엔드"],
+      [DEFAULT_PORTS.api, "백엔드"],
+      [used.web, "프론트엔드"],
+      [DEFAULT_PORTS.web, "프론트엔드"],
+    ]),
+  ].map(([port, name]) => ({ port, name }));
 
   let stopped = 0;
   // 1) start/setup이 기록해 둔 프로세스 그룹
@@ -74,7 +80,7 @@ export async function runStop(args) {
   }
   console.log("");
   if (stopped) ok(bold("서버를 모두 종료했습니다."));
-  else info("끌 서버가 없었습니다. (이 프로젝트의 서버가 3000/8000에서 실행 중이 아닙니다)");
+  else info("끌 서버가 없었습니다. (이 프로젝트의 서버가 실행 중이 아닙니다)");
   for (const s of skipped) warn(`${s}: 이 프로젝트가 아니라서 그대로 두었습니다.`);
   if (!args.includes("--db")) info(dim(`DB도 멈추려면 ${cyan("npx @snackcup/meerkit stop --db")}`));
   return 0;

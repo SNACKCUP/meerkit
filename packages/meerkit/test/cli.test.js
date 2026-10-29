@@ -298,3 +298,14 @@ test("update: 기록이 없으면 다른 파일은 충돌, 같은 파일은 그�
   assert.equal(act["backend/same"], "same");
   assert.equal(act["backend/diff"], "conflict");
 });
+
+test("start --port: 포트 옵션 읽기와 검사", async () => {
+  const { parsePorts } = await import("../src/ports.js");
+  assert.deepEqual(parsePorts([]).ports, { web: 3000, api: 8000 });
+  assert.deepEqual(parsePorts(["--port", "3100", "--api-port", "8100"]).ports, { web: 3100, api: 8100 });
+  assert.deepEqual(parsePorts(["--port", "4000"]).ports, { web: 4000, api: 8000 });
+  assert.match(parsePorts(["--port", "abc"]).error, /--port/);
+  assert.match(parsePorts(["--api-port", "80"]).error, /1024/);
+  assert.match(parsePorts(["--port"]).error, /없음/);
+  assert.match(parsePorts(["--port", "9000", "--api-port", "9000"]).error, /같을 수 없/);
+});

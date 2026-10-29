@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 
 import { checkPorts, printChecks, runToolChecks } from "./checks.js";
+import { parsePorts } from "./ports.js";
 import { runLogged } from "./run.js";
 import { findProjectRoot, printFailure, startServers } from "./setup.js";
 import { bold, cyan, fail, info, ok } from "./ui.js";
@@ -27,6 +28,12 @@ export async function runStart(args) {
     info(`  예: ${cyan("cd my-app")} 한 뒤 ${cyan("npx @snackcup/meerkit start")}`);
     return 1;
   }
+  const parsed = parsePorts(args);
+  if (parsed.error) {
+    fail(parsed.error);
+    return 1;
+  }
+  const { ports: chosen } = parsed;
   const missing = missingSetup(root);
   if (missing.length) {
     fail(`아직 세팅이 끝나지 않았습니다. 없는 것: ${missing.join(", ")}`);
@@ -37,8 +44,8 @@ export async function runStart(args) {
   info(bold("서버를 켤 준비를 합니다."));
   const tools = await runToolChecks();
   const ports = await checkPorts([
-    { port: 3000, name: "프론트엔드" },
-    { port: 8000, name: "백엔드" },
+    { port: chosen.web, name: "프론트엔드" },
+    { port: chosen.api, name: "백엔드" },
   ]);
   if (!printChecks([...tools, ...ports])) return 1;
 
@@ -59,5 +66,5 @@ export async function runStart(args) {
     }
     ok("데이터베이스 실행 중");
   }
-  return startServers(root);
+  return startServers(root, chosen);
 }

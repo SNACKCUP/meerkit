@@ -1,11 +1,13 @@
 import { spawn } from "node:child_process";
 
+import { activePorts } from "./ports.js";
+import { findProjectRoot } from "./setup.js";
 import { cyan, fail, info, ok } from "./ui.js";
 
-const TARGETS = {
-  web: ["http://localhost:3000", "프론트엔드"],
-  api: ["http://localhost:8000/docs", "백엔드 API 문서 (Swagger)"],
-};
+const targets = ({ web, api }) => ({
+  web: [`http://localhost:${web}`, "프론트엔드"],
+  api: [`http://localhost:${api}/docs`, "백엔드 API 문서 (Swagger)"],
+});
 
 export function openUrl(url) {
   const [cmd, args] =
@@ -17,6 +19,9 @@ export function openUrl(url) {
 
 export async function runOpen(args) {
   const target = args.find((a) => !a.startsWith("-")) ?? "web";
+  // 프로젝트 안에서 start --port 로 켜 둔 서버가 있으면 그 포트를 연다
+  const root = findProjectRoot(process.cwd());
+  const TARGETS = targets(root ? await activePorts(root) : { web: 3000, api: 8000 });
   if (!TARGETS[target]) {
     fail(`알 수 없는 대상입니다: ${target}`);
     info(`사용법: ${cyan("npx @snackcup/meerkit open [web|api]")}`);

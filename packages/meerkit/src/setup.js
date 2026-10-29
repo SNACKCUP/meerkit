@@ -5,6 +5,7 @@ import { join, resolve } from "node:path";
 import { checkPorts, printChecks, runToolChecks } from "./checks.js";
 import { ensureEnvFiles } from "./env.js";
 import { clearPidFile, writePidFile } from "./proc.js";
+import { DEFAULT_PORTS } from "./ports.js";
 import { runLogged } from "./run.js";
 import { bold, cyan, dim, fail, info, ok, step, warn } from "./ui.js";
 
@@ -102,9 +103,9 @@ async function waitForUrl(url, ms) {
   return false;
 }
 
-function startServer(label, cmd, args, cwd) {
+function startServer(label, cmd, args, cwd, env) {
   // macOS/Linux에서는 별도 프로세스 그룹으로 띄워, 종료할 때 uvicorn·next 자식까지 함께 끈다 (아니면 포트가 남는다)
-  const child = spawn(cmd, args, { cwd, shell: isWin, detached: !isWin, stdio: ["ignore", "pipe", "pipe"] });
+  const child = spawn(cmd, args, { cwd, env: { ...process.env, ...env }, shell: isWin, detached: !isWin, stdio: ["ignore", "pipe", "pipe"] });
   const prefix = dim(`[${label}] `);
   const pipe = (stream, out) =>
     stream.on("data", (buf) => {
@@ -115,13 +116,15 @@ function startServer(label, cmd, args, cwd) {
   return child;
 }
 
-/** 백엔드(8000)와 프론트엔드(3000)를 켜고, 종료될 때까지 기다린다. setup과 start가 함께 쓴다. */
-export async function startServers(root) {
+/** 백엔드와 프론트엔드를 켜고, 종료될 때까지 기다린다. setup과 start가 함께 쓴다. 포트를 바꾸면 서로를 가리키는 주소도 함께 바꾼다(.env 파일은 건드리지 않음). */
+export async function startServers(root, { web, api } = DEFAULT_PORTS) {
   info("\n서버를 시작합니다. 끝내려면 Ctrl+C 를 누르세요.");
-  const back = startServer("backend", "uv", ["run", "uvicorn", "app.main:app", "--reload", "--port", "8000"], join(root, "backend"));
-  const front = startServer("frontend", "npm", ["run", "dev"], join(root, "frontend"));
+  const webUrl = `http://localhost:${web}`;
+  const custom = web !== DEFAULT_PORTS.web || api !== DEFAULT_PORTS.api;
+  const back = startServer("backend", "uv", ["run", "uvicorn", "app.main:app", "--reload", "--port", String(api)], join(root, "backend"), custom ? { CORS_ORIGINS: webUrl, FRONTEND_BASE_URL: webUrl, SOCIAL_REDIRECT_BASE_URL: `${webUrl}/api/auth` } : {});
+  const front = startServer("frontend", "npm", ["run", "dev", "--", "-p", String(web)], join(root, "frontend"), custom ? { API_PROXY_TARGET: `http://localhost:${api}`, NEXT_PUBLIC_SITE_URL: webUrl } : {});
   // stop 명령이 찾을 수 있게 프로세스 그룹을 기록해 둔다 (종료하면 지운다)
-  if (!isWin) await writePidFile(root, { backend: back.pid, frontend: front.pid });
+  if (!isWin) await writePidFile(root, { backend: back.pid, frontend: front.pid, ports: { web, api } });
   // 켜지는 도중에 서버가 먼저 꺼지면(포트 충돌 등) 알려 준다
   const warnOnEarlyExit = (label, child) =>
     child.on("close", (code) => {
@@ -145,11 +148,12 @@ export async function startServers(root) {
   };
   process.on("SIGINT", quit);
   process.on("SIGTERM", quit);
-  const [b, f] = await Promise.all([waitForUrl("http://localhost:8000/health", 60_000), waitForUrl("http://localhost:3000", 90_000)]);
+  const [b, f] = await Promise.all([waitForUrl(`http://localhost:${api}/health`, 60_000), waitForUrl(webUrl, 90_000)]);
   console.log("");
   if (b && f) {
-    ok(`프론트엔드  ${cyan("http://localhost:3000")}`);
-    ok(`백엔드 API  ${cyan("http://localhost:8000/docs")}`);
+    ok(`프론트엔드  ${cyan(webUrl)}`);
+    ok(`백엔드 API  ${cyan(`http://localhost:${api}/docs`)}`);
+    if (custom) warn("기본 포트가 아니라서 소셜 로그인(Google 등)은 로그인 제공자에 등록한 리디렉션 주소와 달라 동작하지 않을 수 있습니다.");
   } else {
     warn("서버가 제때 켜지지 않았습니다. 위의 [backend] / [frontend] 로그를 확인하세요.");
   }
