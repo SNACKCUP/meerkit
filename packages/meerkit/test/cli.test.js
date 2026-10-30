@@ -370,3 +370,8 @@ test("포트 점검: 모든 주소(::)에 붙은 프로그램도 사용 중으�
   await new Promise((r) => srv.close(r));
   assert.equal(await isPortFree(port), true);
 });
+
+test("docker-compose.yml: DB에 헬스체크가 있다 (없으면 setup의 마이그레이션이 DB 초기화와 겹쳐 실패할 수 있다)", async () => {
+  const compose = await readFile(join(import.meta.dirname, "..", "..", "..", "docker-compose.yml"), "utf8");
+  assert.match(compose, /healthcheck:[\s\S]*pg_isready -h 127\.0\.0\.1/);
+});
