@@ -5,7 +5,7 @@ import { join, resolve } from "node:path";
 import { checkPorts, printChecks, runToolChecks } from "./checks.js";
 import { ensureEnvFiles } from "./env.js";
 import { clearPidFile, writePidFile } from "./proc.js";
-import { DEFAULT_PORTS } from "./ports.js";
+import { DEFAULT_PORTS, parsePorts } from "./ports.js";
 import { runLogged } from "./run.js";
 import { bold, cyan, dim, fail, info, ok, step, warn } from "./ui.js";
 
@@ -176,13 +176,19 @@ export async function runSetup(args) {
     info(`  예: ${cyan("cd my-app")} 한 뒤 ${cyan("npx @snackcup/meerkit setup")}`);
     return 1;
   }
+  const parsed = parsePorts(args);
+  if (parsed.error) {
+    fail(parsed.error);
+    return 1;
+  }
+  const chosen = parsed.ports;
   const logPath = join(root, LOG_NAME);
 
   info(bold("Meerkit 환경을 점검합니다."));
   const tools = await runToolChecks();
   const ports = await checkPorts([
-    { port: 3000, name: "프론트엔드" },
-    { port: 8000, name: "백엔드" },
+    { port: chosen.web, name: "프론트엔드" },
+    { port: chosen.api, name: "백엔드" },
   ]);
   // 5432는 DB 컨테이너가 이미 우리 것으로 떠 있으면 정상이므로 setup의 DB 단계에서 확인한다.
   if (!printChecks([...tools, ...ports])) return 1;
@@ -201,10 +207,11 @@ export async function runSetup(args) {
   console.log("");
   ok(bold("세팅이 끝났습니다."));
   warn("관리자 계정은 로컬 개발용입니다. 아이디와 비밀번호는 backend/.env 의 SEED_ADMIN_USER_ID, SEED_ADMIN_PASSWORD 에 있고, 운영에서는 반드시 바꾸세요.");
+  const portFlags = chosen.web !== DEFAULT_PORTS.web || chosen.api !== DEFAULT_PORTS.api ? ` --port ${chosen.web} --api-port ${chosen.api}` : "";
   if (noStart) {
-    info(`서버는 ${cyan("npx @snackcup/meerkit start")} 로 켭니다. (직접 켜려면 ${cyan("cd backend && uv run uvicorn app.main:app --reload")}  /  ${cyan("cd frontend && npm run dev")}, DB는 ${cyan("docker compose up -d db")})`);
+    info(`서버는 ${cyan(`npx @snackcup/meerkit start${portFlags}`)} 로 켭니다. (직접 켜려면 ${cyan("cd backend && uv run uvicorn app.main:app --reload")}  /  ${cyan("cd frontend && npm run dev")}, DB는 ${cyan("docker compose up -d db")})`);
     return 0;
   }
 
-  return startServers(root);
+  return startServers(root, chosen);
 }
