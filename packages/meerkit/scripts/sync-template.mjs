@@ -16,6 +16,10 @@ const INCLUDE = ["frontend", "backend", "docker-compose.yml", ".github/workflows
 // 템플릿에서 뺄 것: 예시 기능의 테스트
 const EXCLUDE_PREFIXES = ["backend/tests/features/"];
 
+// 킷을 고치는 사람용 E2E 테스트(Playwright). 생성된 프로젝트에는 필요 없으므로 빼고, package.json·lock·.gitignore 의 흔적도 지운다.
+const E2E_FILES = ["frontend/e2e/", "frontend/playwright.config.ts"];
+const E2E_PACKAGES = ["@playwright/test", "playwright", "playwright-core"];
+
 // 복사 뒤에 하나도 남아 있으면 안 되는 문자열 (서비스 코드·설명서 흔적)
 const FORBIDDEN = ["maemusae", "malmoa", "requirements_router", "features.requirements", "gsap", "markitdown", "DocsView", "DocsSearch", "DocsShell", "meerkit/docs", "showDocsPage"];
 
@@ -96,6 +100,31 @@ cd frontend && npm install && npm run dev
 `;
 
 // 설명서(/docs) 화면 코드를 템플릿의 프론트에서 걷어 낸다.
+async function stripE2e(front) {
+  const pkgPath = join(front, "package.json");
+  const pkg = await readJson(pkgPath);
+  for (const name of E2E_PACKAGES) delete pkg.devDependencies?.[name];
+  delete pkg.scripts?.e2e;
+  await writeJson(pkgPath, pkg);
+
+  // npm ci 가 package.json 과 어긋났다고 멈추지 않게 lock 에서도 뺀다
+  const lockPath = join(front, "package-lock.json");
+  if (existsSync(lockPath)) {
+    const lock = await readJson(lockPath);
+    for (const name of E2E_PACKAGES) {
+      delete lock.packages?.[`node_modules/${name}`];
+      delete lock.packages?.[""]?.devDependencies?.[name];
+    }
+    await writeJson(lockPath, lock);
+  }
+
+  const gi = join(front, ".gitignore");
+  if (existsSync(gi)) {
+    const text = await readFile(gi, "utf8");
+    await writeFile(gi, text.replace(/\n?# playwright\n\/test-results\/\n\/playwright-report\/\n/, "\n"));
+  }
+}
+
 async function stripDocs(front) {
   const src = join(front, "src");
   const mockFile = join(src, "meerkit", "docs", "content", "mock.ts");
@@ -175,13 +204,16 @@ async function main() {
   const files = git(["ls-files", "-z", "--", ...INCLUDE]).split("\0").filter(Boolean);
   let copied = 0;
   for (const f of files) {
-    if (EXCLUDE_PREFIXES.some((p) => f.startsWith(p))) continue;
+    if (EXCLUDE_PREFIXES.some((p) => f.startsWith(p)) || E2E_FILES.some((p) => f.startsWith(p))) continue;
     const src = join(repo, f);
     if (!existsSync(src)) continue; // 지워졌지만 아직 커밋되지 않은 파일
     await mkdir(dirname(join(out, f)), { recursive: true });
     await cp(src, join(out, f));
     copied++;
   }
+
+  // E2E(Playwright) 흔적 정리
+  await stripE2e(join(out, "frontend"));
 
   // 2) 설명서 정리
   // 프론트: 사용 설명서는 별도 사이트로 배포하므로 앱에서는 설명서 코드를 모두 뺀다 (웰컴 페이지만 남는다)
@@ -215,6 +247,9 @@ async function main() {
   for (const f of all) {
     if (!/\.(ts|tsx|py|json|md|toml|yml|yaml|mjs|css|example)$/.test(f) && !f.endsWith("_gitignore")) continue;
     const text = await readFile(join(out, f), "utf8").catch(() => "");
+    // E2E 흔적(lock 파일의 next 선택 peer 선언은 정상이므로 package.json·.gitignore 만 본다)
+    if (/^frontend\/(e2e\/|playwright\.config)/.test(f)) problems.push(`E2E 파일: ${f}`);
+    if (/^frontend\/(package\.json|_?\.?gitignore)$/.test(f) && /playwright|test-results/i.test(text)) problems.push(`E2E 흔적: ${f}`);
     for (const w of FORBIDDEN) if (text.toLowerCase().includes(w.toLowerCase())) problems.push(`금지 문자열 "${w}": ${f}`);
   }
   if (problems.length) {
