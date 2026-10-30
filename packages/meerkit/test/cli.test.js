@@ -375,3 +375,26 @@ test("docker-compose.yml: DB에 헬스체크가 있다 (없으면 setup의 마�
   const compose = await readFile(join(import.meta.dirname, "..", "..", "..", "docker-compose.yml"), "utf8");
   assert.match(compose, /healthcheck:[\s\S]*pg_isready -h 127\.0\.0\.1/);
 });
+
+test("Docker: 켜져 있는데 응답이 없으면(타임아웃) 실행 중이 아님과 구분해 안내한다", () => {
+  const run = (cmd, args) => (args[0] === "info" ? { ok: false, timedOut: true, out: "", err: "" } : { ok: true, out: "ok", err: "" });
+  const r = checkDocker(run).find((x) => x.id === "docker-running");
+  assert.equal(r.ok, false);
+  assert.equal(r.detail, "응답이 없음");
+  assert.match(r.fix, /디스크/);
+  // 타임아웃이 아니면 기존 안내
+  const off = checkDocker((cmd, args) => ({ ok: args[0] !== "info", out: "ok", err: "" })).find((x) => x.id === "docker-running");
+  assert.equal(off.detail, "실행 중이 아님");
+});
+
+test("디스크 여유 공간: 2GB 미만이면 막고 원인을 알려 준다", async () => {
+  const { checkDisk } = await import("../src/checks.js");
+  const GB = 1024 ** 3;
+  assert.equal(checkDisk(10 * GB).ok, true);
+  assert.equal(checkDisk(2 * GB).ok, true);
+  const low = checkDisk(0.2 * GB);
+  assert.equal(low.ok, false);
+  assert.match(low.detail, /0\.2GB/);
+  assert.match(low.fix, /ENOSPC/);
+  assert.equal(checkDisk(null).ok, true); // 못 구하면 통과
+});
