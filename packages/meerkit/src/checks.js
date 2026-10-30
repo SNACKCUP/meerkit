@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { statfsSync } from "node:fs";
 import net from "node:net";
 
 import { fail, ok, warn, bold, dim } from "./ui.js";
@@ -15,7 +16,7 @@ export const MIN_NODE_MAJOR = 20;
 
 function tryRun(cmd, args) {
   const r = spawnSync(cmd, args, { encoding: "utf8", shell: isWin, timeout: 20_000 });
-  if (r.error || r.status === null) return { ok: false, out: "", err: r.error?.message ?? "" };
+  if (r.error || r.status === null) return { ok: false, timedOut: r.error?.code === "ETIMEDOUT", out: "", err: r.error?.message ?? "" };
   return { ok: r.status === 0, out: (r.stdout || "").trim(), err: (r.stderr || "").trim() };
 }
 
@@ -58,11 +59,17 @@ export function checkDocker(run = tryRun) {
   );
 
   const d = run("docker", ["info"]);
-  results.push(
-    d.ok
-      ? { id: "docker-running", label: "Docker Desktop 실행", ok: true, detail: "실행 중" }
-      : { id: "docker-running", label: "Docker Desktop 실행", ok: false, detail: "실행 중이 아님", fix: "Docker Desktop을 실행하고 완전히 켜질 때까지 기다린 뒤 다시 시도하세요." },
-  );
+  if (d.ok) results.push({ id: "docker-running", label: "Docker Desktop 실행", ok: true, detail: "실행 중" });
+  else if (d.timedOut) {
+    // 켜져 있는데 응답이 없는 경우. 디스크가 가득 차면 Docker 가상 디스크가 멈춰서 이렇게 된다.
+    results.push({
+      id: "docker-running",
+      label: "Docker Desktop 실행",
+      ok: false,
+      detail: "응답이 없음",
+      fix: "Docker Desktop이 켜져 있어도 멈췄을 수 있습니다. 디스크 여유 공간이 부족하면 Docker가 멈추니 먼저 공간을 확보하고, Docker Desktop을 재시작한 뒤 다시 시도하세요.",
+    });
+  } else results.push({ id: "docker-running", label: "Docker Desktop 실행", ok: false, detail: "실행 중이 아님", fix: "Docker Desktop을 실행하고 완전히 켜질 때까지 기다린 뒤 다시 시도하세요." });
   return results;
 }
 
@@ -134,6 +141,33 @@ export function printChecks(results) {
 }
 
 /** setup에 필요한 도구를 모두 점검한다 (하나가 없어도 끝까지 보고 한꺼번에 알려 준다). */
+// 설치(node_modules, .venv, Docker 이미지)에 필요한 여유 공간. 이보다 적으면 중간에 ENOSPC 로 멈춘다.
+export const MIN_FREE_GB = 2;
+
+/** 디스크 여유 공간 점검. freeBytes 를 못 구하면(null) 통과로 본다. */
+export function checkDisk(freeBytes) {
+  if (freeBytes == null) return { id: "disk", label: "디스크 여유 공간", ok: true, detail: "확인하지 못함" };
+  const gb = freeBytes / 1024 ** 3;
+  const text = `${gb.toFixed(1)}GB`;
+  if (gb >= MIN_FREE_GB) return { id: "disk", label: "디스크 여유 공간", ok: true, detail: text };
+  return {
+    id: "disk",
+    label: "디스크 여유 공간",
+    ok: false,
+    detail: `${text} 남음 (최소 ${MIN_FREE_GB}GB 필요)`,
+    fix: "디스크 공간이 부족하면 npm install이 ENOSPC 오류로 멈추고 Docker도 응답하지 않습니다. 안 쓰는 파일이나 오래된 node_modules를 지워 공간을 확보하세요.",
+  };
+}
+
+function freeDiskBytes(dir = process.cwd()) {
+  try {
+    const st = statfsSync(dir);
+    return st.bavail * st.bsize;
+  } catch {
+    return null;
+  }
+}
+
 export async function runToolChecks() {
-  return [checkNode(), checkNpm(), checkUv(), ...checkDocker()];
+  return [checkDisk(freeDiskBytes()), checkNode(), checkNpm(), checkUv(), ...checkDocker()];
 }
