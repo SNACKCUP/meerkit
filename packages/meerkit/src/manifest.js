@@ -8,7 +8,15 @@ import { PACKAGE_JSON, TEMPLATE_DIR } from "./paths.js";
 // 어떤 파일을 어떤 킷 버전에서 받았는지 적어 두는 파일. update가 "내가 고친 파일"을 알아보는 기준이다.
 export const MANIFEST_FILE = join(".meerkit", "manifest.json");
 
-export const sha = (buf) => createHash("sha256").update(buf).digest("hex");
+/**
+ * 파일 내용의 해시. 텍스트 파일은 줄바꿈(CRLF)을 LF로 보고 계산한다.
+ * Windows의 git(autocrlf)이 파일을 CRLF로 바꿔도 고친 파일로 오인하지 않게 하기 위함이다. 바이너리(NUL 바이트가 있는 파일)는 그대로 계산한다.
+ */
+export const sha = (buf) => {
+  const isBinary = buf.subarray(0, 8000).includes(0);
+  const data = isBinary ? buf : Buffer.from(buf.toString("latin1").replaceAll("\r\n", "\n"), "latin1");
+  return createHash("sha256").update(data).digest("hex");
+};
 
 export async function kitVersion() {
   return JSON.parse(await readFile(PACKAGE_JSON, "utf8")).version;

@@ -336,3 +336,26 @@ test("test: 힌트는 그 원인으로 보일 때만 붙는다", async () => {
   assert.equal(shouldHint(step, ["sqlalchemy.exc.OperationalError: connection refused"]), true);
   assert.equal(shouldHint({}, ["아무 출력"]), true); // 조건이 없는 단계는 항상 보여 준다
 });
+
+test("update: 줄바꿈이 CRLF로 바뀌어도 고친 파일로 보지 않는다 (Windows git autocrlf)", async () => {
+  const { sha } = await import("../src/manifest.js");
+  const { planUpdate } = await import("../src/update.js");
+  const { readManifest } = await import("../src/manifest.js");
+  assert.equal(sha(Buffer.from("a\nb\n")), sha(Buffer.from("a\r\nb\r\n")));
+  assert.notEqual(sha(Buffer.from("a\nb\n")), sha(Buffer.from("a\nc\n")));
+  // 바이너리는 그대로 계산한다
+  assert.notEqual(sha(Buffer.from([0, 1, 13, 10, 2])), sha(Buffer.from([0, 1, 10, 2])));
+
+  const tpl = await tmp();
+  await mkdir(join(tpl, "frontend"));
+  await mkdir(join(tpl, "backend"));
+  await writeFile(join(tpl, "frontend", "package.json"), JSON.stringify({ name: "meerkit" }));
+  await writeFile(join(tpl, "backend", "a.py"), "x = 1\ny = 2\n");
+  await writeFile(join(tpl, "docker-compose.yml"), "x");
+  const root = join(await tmp(), "my-app");
+  await createProject(root, { templateDir: tpl });
+  await writeFile(join(root, "backend", "a.py"), "x = 1\r\ny = 2\r\n"); // 체크아웃이 CRLF로 바꾼 상황
+  await writeFile(join(tpl, "backend", "a.py"), "x = 1\ny = 3\n"); // 킷이 새 버전을 냄
+  const plan = await planUpdate(root, { templateDir: tpl, manifest: await readManifest(root) });
+  assert.equal(plan.entries.find((e) => e.rel === "backend/a.py").action, "update");
+});
