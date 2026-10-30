@@ -219,13 +219,13 @@ async function main() {
   // 프론트: 사용 설명서는 별도 사이트로 배포하므로 앱에서는 설명서 코드를 모두 뺀다 (웰컴 페이지만 남는다)
   await stripDocs(join(out, "frontend"));
 
-  // 백엔드 환경 변수 예시: 이 저장소의 기본 DB는 Supabase 로컬(54322)이지만, 생성된 프로젝트는 docker-compose의 PostgreSQL을 쓴다.
+  // 백엔드 환경 변수 예시: 생성된 프로젝트에는 Supabase 대체용 줄을 빼고 docker-compose의 PostgreSQL 주소만 남긴다.
   const envExample = join(out, "backend", ".env.example");
   if (existsSync(envExample)) {
     const docker = "postgresql+psycopg://starter:starter@localhost:5432";
     let env = await readFile(envExample, "utf8");
     env = env
-      .replace(/^# DATABASE_URL=.*docker compose.*\n/m, "")
+      .replace(/^# DATABASE_URL=.*Supabase.*\n/m, "")
       .replace(/^DATABASE_URL=.*$/m, `DATABASE_URL=${docker}/starter  # docker-compose.yml의 db (로컬 전용 계정)`)
       .replace(/^TEST_DATABASE_URL=.*$/m, `TEST_DATABASE_URL=${docker}/meerkit_test`);
     await writeFile(envExample, env);

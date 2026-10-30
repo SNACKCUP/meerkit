@@ -21,60 +21,83 @@ FastAPI + PostgreSQL + React + LangChain으로 AI 서비스를 빠르게 시작�
 
 ### 사전 준비
 
-- Git
+- [Node.js](https://nodejs.org/) 20 이상
 - [uv](https://docs.astral.sh/uv/) (Python 3.12는 uv가 설치해 줍니다)
-- Node.js 20 이상
-- Docker Desktop
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (**실행 중**이어야 합니다)
+- 디스크 여유 공간 2GB 이상 (부족하면 설치가 실패하고 Docker도 멈춥니다)
 
-### 1. 클론
+빠진 것은 `npx @snackcup/meerkit check`로 확인할 수 있습니다.
+
+### 방법 A. 새 프로젝트로 시작하기 (권장)
 
 ```bash
-git clone https://github.com/SNACKCUP/meerkit.git
+npx create-meerkit my-app
+cd my-app
+npx @snackcup/meerkit setup
+```
+
+`setup`이 라이브러리 설치, `.env` 생성, DB 실행, 마이그레이션, 관리자 계정 생성까지 한 번에 하고 서버를 켭니다. 끝나면 http://localhost:3000 을 엽니다. 다시 실행해도 안전합니다.
+
+### 방법 B. 저장소를 Fork(또는 clone)해서 시작하기
+
+```bash
+git clone https://github.com/<내 계정>/meerkit.git   # Fork한 저장소
 cd meerkit
+npx @snackcup/meerkit setup
 ```
 
-### 2. DB 실행 (루트 폴더)
+루트에서 `npm install`을 할 필요가 없습니다. 루트 `package.json`은 Supabase CLI(대체 DB용, 아래 참고)만 담고 있어 용량이 크므로, 필요할 때만 설치하세요.
 
-로컬 DB는 Supabase CLI로 띄웁니다. CLI 버전은 루트 `package.json`에 고정되어 있습니다.
+### 자주 쓰는 옵션과 명령
+
+| 하고 싶은 일 | 명령 |
+|---|---|
+| 서버는 켜지 않고 세팅만 | `npx @snackcup/meerkit setup --no-start` |
+| 포트 바꾸기 | `npx @snackcup/meerkit setup --port 3100 --api-port 8100` (1024~65535, 브라우저가 막는 6000 같은 포트는 피하세요) |
+| 다음부터 서버만 켜기 | `npx @snackcup/meerkit start` |
+| 상태 / 종료 / 브라우저 열기 | `status` / `stop` / `open` |
+| 전체 명령 | `npx @snackcup/meerkit --help` |
+
+자세한 순서와 문제 해결은 [시작하기](시작하기.md)를 보세요.
+
+- 화면: http://localhost:3000 → 회원가입·로그인, `/me`(내 정보), `/admin/members`(관리자 전용 멤버 관리)
+- API 문서: http://localhost:8000/docs
+- 관리자(MASTER) 계정: `backend/.env`의 `SEED_ADMIN_USER_ID`(로그인 아이디) / `SEED_ADMIN_PASSWORD` (**로컬 전용** 값)
+- 가입 이메일 인증번호·비밀번호 재설정 메일: 기본(`MAIL_BACKEND=console`)은 백엔드 터미널 로그에 출력됩니다. 메일함처럼 보려면 `docker compose up -d mailpit` 후 `MAIL_BACKEND=smtp` → http://localhost:8025
+- 개발 중 `/api` 요청은 Next.js 프록시가 백엔드로 전달하므로 CORS 설정 없이 동작합니다.
+
+### 수동으로 실행하기 (CLI 없이)
+
+<details>
+<summary>펼치기</summary>
 
 ```bash
-npm install                # 처음 한 번 (Supabase CLI 설치)
-npm run db:start           # 첫 실행은 이미지 다운로드로 몇 분 걸립니다
-npm run db:status          # DB URL, Studio 주소 확인
-```
+docker compose up -d db                  # 루트: PostgreSQL 16
 
-- DB: `127.0.0.1:54322` (계정 `postgres`/`postgres`, **로컬 전용**)
-- Studio(DB 관리 화면): http://127.0.0.1:54323
-- 끄기: `npm run db:stop` (데이터는 유지됩니다). `npx supabase stop --no-backup`은 **데이터를 지우니** 주의하세요.
-- 대체용: Supabase를 쓸 수 없으면 `docker compose up -d db`로 PostgreSQL 16을 띄우고, `backend/.env`의 `DATABASE_URL`을 `.env.example`에 주석으로 있는 대체용 주소로 바꿉니다.
-
-### 3. 백엔드 실행 (터미널 1)
-
-```bash
 cd backend
-cp .env.example .env       # OPENAI_API_KEY 등 필요한 값 채우기
+cp .env.example .env                     # 필요한 값 채우기
 uv sync
 uv run alembic upgrade head
-uv run python -m app.users.seed   # 로컬 테스트용 관리자 계정 (admin@example.com)
+uv run python -m app.users.seed          # 로컬 테스트용 관리자 계정
 uv run uvicorn app.main:app --reload --port 8000
-```
 
-- 상태 확인: http://localhost:8000/health → `{"status":"ok"}`
-- API 문서: http://localhost:8000/docs
-
-### 4. 프론트엔드 실행 (터미널 2)
-
-```bash
-cd frontend
-cp .env.example .env
+cd ../frontend                           # 다른 터미널
+cp .env.example .env.local
 npm install
 npm run dev
 ```
 
-- 화면: http://localhost:3000 → 회원가입·로그인, `/me`(내 정보), `/admin/members`(관리자 전용 멤버 관리)
-- 관리자(MASTER) 계정: `backend/.env`의 `SEED_ADMIN_USER_ID`(로그인 아이디) / `SEED_ADMIN_PASSWORD` (**로컬 전용** 값)
-- 가입 이메일 인증번호·비밀번호 재설정 메일: 기본(`MAIL_BACKEND=console`)은 백엔드 터미널 로그에 출력됩니다. 메일함처럼 보려면 `docker compose up -d mailpit` 후 `MAIL_BACKEND=smtp` → http://localhost:8025
-- 개발 중 `/api` 요청은 Next.js 프록시(`next.config.ts`의 rewrites)가 백엔드(8000)로 전달하므로 CORS 설정 없이 동작합니다.
+</details>
+
+### 대체 DB: Supabase CLI (선택)
+
+Docker Compose 대신 Supabase CLI로 DB를 띄울 수도 있습니다. 이 경우에만 루트에서 `npm install`을 합니다.
+
+```bash
+npm install && npm run db:start   # DB: 127.0.0.1:54322, Studio: http://127.0.0.1:54323
+```
+
+`backend/.env`의 `DATABASE_URL`, `TEST_DATABASE_URL`을 `.env.example`에 주석으로 있는 Supabase용 주소(포트 54322)로 바꿉니다. 끄기는 `npm run db:stop`입니다.
 
 ## 폴더 구조
 
@@ -101,6 +124,7 @@ meerkit/
 │       └── components/ui/   # shadcn 컴포넌트
 ├── docs/                # 설계 문서
 ├── docker-compose.yml   # 로컬 PostgreSQL
+├── packages/            # CLI(@snackcup/meerkit, create-meerkit) 소스
 ├── CLAUDE.md            # AI 작업 규칙
 └── .github/workflows/   # CI
 ```
@@ -112,8 +136,8 @@ meerkit/
 
 | 하고 싶은 일 | 명령 (실행 위치) |
 |---|---|
-| DB 켜기 / 끄기 | `npm run db:start` / `npm run db:stop` (루트) |
-| DB 상태 확인 | `npm run db:status` (루트) |
+| DB 켜기 / 끄기 | `docker compose up -d db` / `docker compose stop db` (루트) |
+| DB 처음부터 다시 | `npx @snackcup/meerkit db reset` (데이터 삭제) |
 | 백엔드 테스트 | `uv run pytest` (backend). `TEST_DATABASE_URL`의 `meerkit_test` DB를 쓰며, 처음 실행할 때 자동으로 만들고 마이그레이션합니다. 개발 DB는 건드리지 않습니다 |
 | 백엔드 린트 | `uv run ruff check .` (backend) |
 | 마이그레이션 생성 | `uv run alembic revision --autogenerate -m "설명"` (backend) |
@@ -179,5 +203,7 @@ meerkit/
 | `no configuration file provided` | `docker-compose.yml`이 있는 루트 폴더에서 실행합니다. |
 | `ModuleNotFoundError: No module named 'app'` | `backend/` 폴더에서 실행합니다 (`pwd`로 확인). |
 | `database_url Field required` | `backend/.env`가 있는지 확인합니다 (`ls -a`). |
-| `connection refused` (DB) | 루트에서 `npm run db:status`로 DB가 켜져 있는지 확인하고, 꺼져 있으면 `npm run db:start`를 실행합니다. |
+| `connection refused` (DB) | `npx @snackcup/meerkit status`로 DB 상태를 확인하고, 꺼져 있으면 `npx @snackcup/meerkit start`를 실행합니다. |
+| Docker Desktop이 켜져 있는데 "응답이 없음" | 디스크가 가득 차면 Docker가 멈춥니다. 공간을 확보하고 Docker Desktop을 재시작하세요. |
+| `npm install` 중 `ENOSPC` | 디스크 공간 부족입니다. 공간을 확보한 뒤 다시 실행하세요. |
 | `.env`를 고쳤는데 반영이 안 됨 | 서버를 Ctrl+C로 끄고 다시 실행합니다. |
