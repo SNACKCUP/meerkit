@@ -13,7 +13,7 @@ npx @snackcup/meerkit setup
 | 명령 | 하는 일 |
 | --- | --- |
 | `meerkit init <폴더>` | 템플릿(frontend, backend, docker-compose.yml)을 펼칩니다. 폴더 이름은 소문자·숫자·`-`·`_` |
-| `meerkit setup` | 프로젝트 폴더 안에서 실행. 환경 점검 → 설치 → `.env`와 비밀키 → DB → 마이그레이션 → 관리자 계정 → 서버 시작. `--no-start`는 서버를 켜지 않고 세팅만 |
+| `meerkit setup` | 프로젝트 폴더 안에서 실행. 환경 점검 → 설치 → `.env`와 비밀키 → DB → 마이그레이션 → 관리자 계정 → 서버 시작. `--no-start`는 서버를 켜지 않고 세팅만, `--port`·`--api-port`로 서버 포트 지정(`start`와 같음) |
 | `meerkit start` | 세팅이 끝난 프로젝트의 서버만 켭니다: DB 확인 → 백엔드(8000) → 프론트엔드(3000). `--port`(프론트)·`--api-port`(백엔드)로 포트를 바꿀 수 있고 `.env`는 건드리지 않습니다. `--no-db`는 DB를 건드리지 않음. Ctrl+C로 끄면 자식 프로세스까지 정리 |
 | `meerkit stop` | 이 프로젝트의 서버를 끕니다. 다른 프로그램이 쓰는 포트는 건드리지 않고 알려 줍니다. `--db`는 DB도 멈춤 (macOS/Linux) |
 | `meerkit status` | 세팅 여부, DB, 마이그레이션 최신 여부, 3000·8000 포트 소유자와 응답을 한눈에 봅니다 |

@@ -359,3 +359,14 @@ test("update: 줄바꿈이 CRLF로 바뀌어도 고친 파일로 보지 않는�
   const plan = await planUpdate(root, { templateDir: tpl, manifest: await readManifest(root) });
   assert.equal(plan.entries.find((e) => e.rel === "backend/a.py").action, "update");
 });
+
+test("포트 점검: 모든 주소(::)에 붙은 프로그램도 사용 중으로 본다", async () => {
+  const { isPortFree } = await import("../src/checks.js");
+  const net = await import("node:net");
+  const srv = net.createServer();
+  await new Promise((r) => srv.listen(0, r)); // 주소를 안 주면 모든 주소에 붙는다 (next 와 같은 방식)
+  const { port } = srv.address();
+  assert.equal(await isPortFree(port), false);
+  await new Promise((r) => srv.close(r));
+  assert.equal(await isPortFree(port), true);
+});

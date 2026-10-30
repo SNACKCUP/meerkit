@@ -66,13 +66,22 @@ export function checkDocker(run = tryRun) {
   return results;
 }
 
-export function isPortFree(port) {
+// 한 주소에서 listen 해 본다. 그 주소를 쓸 수 없는 환경(IPv6 없음 등)은 막힌 것이 아니므로 비어 있다고 본다.
+function canListen(port, host) {
   return new Promise((resolvePromise) => {
     const srv = net.createServer();
-    srv.once("error", () => resolvePromise(false));
+    srv.once("error", (e) => resolvePromise(e.code === "EAFNOSUPPORT" || e.code === "EADDRNOTAVAIL"));
     srv.once("listening", () => srv.close(() => resolvePromise(true)));
-    srv.listen(port, "127.0.0.1");
+    srv.listen(port, host);
   });
+}
+
+/**
+ * 포트가 비어 있는지 본다. uvicorn은 127.0.0.1, next·Node 는 모든 주소(::)에 붙으므로 둘 다 확인한다.
+ * (한쪽만 보면 다른 쪽에 붙은 프로그램을 놓쳐서, 점검은 통과하는데 서버가 EADDRINUSE 로 죽는다.)
+ */
+export async function isPortFree(port) {
+  return (await canListen(port, "127.0.0.1")) && (await canListen(port, undefined));
 }
 
 /** 포트를 쓰는 프로그램을 알아낸다 (macOS/Linux의 lsof). 알 수 없으면 null. 예: "node (PID 1234)" */
