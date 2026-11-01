@@ -33,6 +33,17 @@ export const docGroups: DocGroup[] = [
     ],
   },
   {
+    label: "CLI",
+    items: [
+      { slug: "cli-overview", title: "CLI Overview", description: "Meerkit CLI의 명령 목록과 공통으로 알아 둘 것입니다." },
+      { slug: "cli-setup", title: "init & setup", description: "새 프로젝트를 만들고 처음 세팅하는 명령입니다. 포트 옵션과 자주 나는 문제를 설명합니다." },
+      { slug: "cli-server", title: "start, stop & open", description: "서버를 켜고 끄고 브라우저로 여는 명령입니다." },
+      { slug: "cli-diagnose", title: "status, check, env & logs", description: "안 될 때 상태, 개발 도구, 환경 변수, 로그를 점검하는 명령입니다." },
+      { slug: "cli-database", title: "db", description: "마이그레이션, 관리자 계정 만들기, 로컬 DB 초기화 명령입니다." },
+      { slug: "cli-develop", title: "add, test & update", description: "새 기능 뼈대 만들기, 확인 한 번에 돌리기, 새 킷 버전 가져오기 명령입니다." },
+    ],
+  },
+  {
     label: "Core Concepts",
     items: [
       { slug: "authentication", title: "Authentication", description: "회원가입, 로그인, 토큰 흐름과 보안 규칙을 설명합니다." },

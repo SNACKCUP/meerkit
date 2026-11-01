@@ -398,3 +398,18 @@ test("디스크 여유 공간: 2GB 미만이면 막고 원인을 알려 준다",
   assert.match(low.fix, /ENOSPC/);
   assert.equal(checkDisk(null).ok, true); // 못 구하면 통과
 });
+
+// 설명서의 CLI 설명집(frontend/src/meerkit/docs/content/cli.tsx)이 help.js와 어긋나지 않는지 본다.
+// 설명서는 이 저장소에만 있으므로, 배포된 패키지 안에서는 건너뛴다.
+const cliDocPath = new URL("../../../frontend/src/meerkit/docs/content/cli.tsx", import.meta.url);
+
+test("CLI 설명집이 모든 명령과 옵션을 다룬다", { skip: !existsSync(cliDocPath) && "설명서 파일이 없음" }, async () => {
+  const doc = await readFile(cliDocPath, "utf8");
+  for (const c of COMMANDS) {
+    assert.match(doc, new RegExp(`<H2>${c.name}( \\w+)?</H2>`), `설명집에 ${c.name} 명령 제목이 없습니다`);
+    for (const [flag] of c.options ?? []) {
+      const name = flag.split(" ")[0];
+      assert.ok(doc.includes(name), `설명집에 ${c.name} 의 ${name} 옵션이 없습니다`);
+    }
+  }
+});

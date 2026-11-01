@@ -3,6 +3,7 @@ import type { ComponentType } from "react";
 import { AuthDialogDoc, LoginFormDoc, MemberTableDoc, RoleSelectDoc, RouteGuardsDoc, SignupFormDoc, UserAvatarDoc, UserMenuDoc } from "./components";
 import { GuideAddRole, GuideCallApi, GuideProtectPage, Security } from "./guides";
 import { Authentication, DataModel, Roles } from "./core";
+import { CliDatabase, CliDevelop, CliDiagnose, CliOverview, CliServer, CliSetup } from "./cli";
 import { Deployment, Installation, Introduction, ProjectStructure, Theming } from "./getting-started";
 import { GoogleLoginDoc } from "./google-login";
 import { LoginLockoutDoc, MemberDirectoryDoc, PasswordResetDoc, ProfileDoc, TermsAgreementDoc } from "./flows";
@@ -24,6 +25,12 @@ export const docContent: Record<string, ComponentType> = {
   "project-structure": ProjectStructure,
   theming: Theming,
   deployment: Deployment,
+  "cli-overview": CliOverview,
+  "cli-setup": CliSetup,
+  "cli-server": CliServer,
+  "cli-diagnose": CliDiagnose,
+  "cli-database": CliDatabase,
+  "cli-develop": CliDevelop,
   authentication: Authentication,
   roles: Roles,
   "data-model": DataModel,
