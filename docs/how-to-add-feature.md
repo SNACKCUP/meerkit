@@ -206,7 +206,7 @@ frontend/src/app/(service)/meetings/
     └── MeetingList.tsx
 ```
 
-킷 기능은 **`@/meerkit`(공개 API)에서만** import 합니다. 킷 내부 파일(`@/meerkit/api/...`)을 직접 import 하면 ESLint가 막습니다.
+킷 기능은 **`@/meerkit`(공개 API)에서만** import 합니다. 킷 내부 파일(`@/meerkit/api/...`)을 직접 import 하면 킷 내부 구조가 바뀔 때 함께 깨집니다. 아직 자동으로 막지는 않으니 직접 지켜 주세요.
 
 ```ts
 // _components/api.ts
