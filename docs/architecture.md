@@ -58,7 +58,7 @@ flowchart TB
 - **킷(`core`, `users`, `auth`, `permissions`, `account`, `social`, `llm`, `mail`, `storage`, `codes`)은 `features/`를 절대 import 하지 않습니다.** `tests/test_import_rules.py`가 검사합니다.
 - `features/` 안의 기능끼리도 서로 import 하지 않습니다. 공통으로 필요해지면 공통 기반으로 올립니다.
 - 각 모듈 안에서는 `router → service → repository` 방향으로만 import 합니다.
-- 프론트엔드도 같습니다: 킷(`src/meerkit`)은 `src/app`(라우트·서비스 화면)을 import 하지 않고, `src/app`은 킷을 `@/meerkit`(공개 API)으로만 씁니다. ESLint가 검사합니다.
+- 프론트엔드도 같습니다: 킷(`src/meerkit`)은 `src/app`(라우트·서비스 화면)을 import 하지 않고, `src/app`은 킷을 `@/meerkit`(공개 API)으로만 씁니다. 이 방향은 아직 자동으로 검사하지 않으니 코드 리뷰에서 확인하세요.
 
 ## 3. 백엔드 구조
 
