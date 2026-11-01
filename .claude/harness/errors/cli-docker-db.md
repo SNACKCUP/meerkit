@@ -14,6 +14,12 @@
 - Never: DB가 "시작됨"이라는 사실만으로 마이그레이션을 시작하지 않는다. `healthy`가 될 때까지 기다린다. (이유: 첫 `setup`의 마이그레이션이 `server closed the connection unexpectedly`로 4번 중 1번꼴로 실패했다)
 - Always: `docker-compose.yml`의 healthcheck가 유지되는지 `cli.test.js`의 확인을 통과시킨다.
 
+## DB 포트 소유
+
+- Always: `docker compose up`이 성공해도, 이 프로젝트의 DB 컨테이너가 backend/.env의 DATABASE_URL 포트로 실제로 열려 있는지(`docker compose port db 5432`) 확인한 뒤에 마이그레이션·시드를 실행한다. (이유: 5432를 다른 컨테이너가 쓰고 있을 때 `setup` 재실행이 "완료"로 끝나고, 마이그레이션·시드가 다른 컨테이너의 DB에서 실행됐다. 첫 실행은 "port is already allocated"로 실패했지만 두 번째 실행은 통과했다)
+- Never: "우리 DB가 이미 떠 있으면 정상"이라고 가정해서 포트 점검을 건너뛰지 않는다. 포트 소유를 확인하고, 다른 컨테이너의 이름과 해결 방법을 알려 준다. 그 컨테이너를 CLI가 멈추지는 않는다.
+- Always: 검증 중 다른 DB 컨테이너가 같은 포트를 쓰고 있으면 `docker ps`로 먼저 확인한다. 임의로 멈추거나 그 DB에 pytest·마이그레이션을 돌리지 않는다.
+
 ## 실패 안내
 
 - Always: 실패를 알릴 때는 스택 트레이스 대신 "원인 한 줄, 출력에서 찾은 실제 에러 줄, 해결 순서"를 보여 준다. 원인을 모르는 실패만 마지막 로그를 그대로 보여 준다. (이유: `test`가 SQLAlchemy 스택 40줄을 내보내 실제 원인인 "5432 연결 실패"가 묻혔다) 분류는 `packages/meerkit/src/explain.js`에 추가한다.

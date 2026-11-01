@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 
 import { dbReachable } from "./db.js";
+import { checkDbPort } from "./dbport.js";
 import { checkPorts, printChecks, runToolChecks } from "./checks.js";
 import { parsePorts } from "./ports.js";
 import { runLogged } from "./run.js";
@@ -61,6 +62,17 @@ export async function runStart(args) {
         cause: r.tail,
         hint: "Docker Desktop이 실행 중인지, 5432 포트를 다른 프로그램이 쓰고 있지 않은지 확인하세요.",
         logPath,
+        retry: "start",
+      });
+      return 1;
+    }
+    const problem = await checkDbPort(root);
+    if (problem) {
+      printFailure({
+        title: "데이터베이스 실행",
+        cause: [problem.summary, ...problem.lines, ...problem.fixes.map((f, i) => `해결 ${i + 1}: ${f}`)],
+        hint: "위 원인을 해결한 뒤 다시 실행하세요.",
+        logPath: join(root, LOG_NAME),
         retry: "start",
       });
       return 1;

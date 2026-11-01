@@ -3,6 +3,7 @@ import { spawn } from "node:child_process";
 import { join, resolve } from "node:path";
 
 import { checkPorts, printChecks, runToolChecks } from "./checks.js";
+import { checkDbPort } from "./dbport.js";
 import { ensureEnvFiles } from "./env.js";
 import { clearPidFile, writePidFile } from "./proc.js";
 import { DEFAULT_PORTS, parsePorts } from "./ports.js";
@@ -37,7 +38,7 @@ export function printFailure({ title, cause, hint, logPath, retry = "setup" }) {
   fail(bold(`${title} 단계에서 멈췄습니다.`));
   if (cause?.length) {
     console.log("  원인 (로그 마지막 부분):");
-    for (const line of cause) console.log(`    ${dim(line.slice(0, 160))}`);
+    for (const line of cause) console.log(`    ${dim(line.slice(0, 300))}`);
   }
   for (const tip of diagnose(cause)) console.log(`  원인으로 보이는 것: ${tip}`);
   if (hint) console.log(`  해결: ${hint}`);
@@ -74,7 +75,13 @@ export function buildSteps(root, logPath) {
     {
       title: "데이터베이스 실행 (docker compose)",
       hint: "Docker Desktop이 실행 중인지, 5432 포트를 다른 프로그램이 쓰고 있지 않은지 확인하세요.",
-      run: () => run("docker", ["compose", "up", "-d", "--wait", "db"], ".", "docker compose up"),
+      run: async () => {
+        const r = await run("docker", ["compose", "up", "-d", "--wait", "db"], ".", "docker compose up");
+        if (r.code !== 0) return r;
+        // 켜졌더라도 backend/.env 가 가리키는 포트로 열려 있어야 한다. 다른 DB가 그 포트를 쓰고 있으면 거기에 마이그레이션이 실행된다.
+        const problem = await checkDbPort(root);
+        return problem ? { code: 1, tail: [problem.summary, ...problem.lines, ...problem.fixes.map((f, i) => `해결 ${i + 1}: ${f}`)] } : r;
+      },
     },
     {
       title: "데이터베이스 테이블 만들기 (마이그레이션)",
