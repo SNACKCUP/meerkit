@@ -413,3 +413,43 @@ test("CLI 설명집이 모든 명령과 옵션을 다룬다", { skip: !existsSyn
     }
   }
 });
+
+import { createServer } from "node:net";
+import { dbReachable } from "../src/db.js";
+import { explainFailure, formatExplanation } from "../src/explain.js";
+
+test("DB 연결 실패는 주소·포트와 해결 방법으로 설명한다", () => {
+  const e = explainFailure([
+    '    .venv/lib/python3.12/site-packages/psycopg/connection.py:134: in connect',
+    '    E   sqlalchemy.exc.OperationalError: (psycopg.OperationalError) connection failed: connection to server at "127.0.0.1", port 5999 failed: could not receive data',
+  ]);
+  assert.match(e.summary, /127\.0\.0\.1:5999/);
+  assert.match(e.evidence, /connection to server at "127\.0\.0\.1", port 5999/);
+  const text = formatExplanation(e).join("\n");
+  assert.match(text, /meerkit status/);
+  assert.match(text, /lsof .*:5999/);
+});
+
+test("테이블·환경 변수·모듈·포트 오류를 알아본다", () => {
+  assert.match(explainFailure(['E   psycopg.errors.UndefinedTable: relation "meetings" does not exist']).summary, /'meetings'/);
+  assert.match(explainFailure(["database_url", "  Field required [type=missing]"]).summary, /DATABASE_URL/);
+  assert.match(explainFailure(["ModuleNotFoundError: No module named 'app.features.meeting'"]).fixes.join("\n"), /uv add app/);
+  assert.match(explainFailure(["Error: listen EADDRINUSE: address already in use :::8000"]).summary, /8000/);
+});
+
+test("모르는 오류는 설명하지 않는다 (원래 출력을 그대로 보여 주기 위해)", () => {
+  assert.equal(explainFailure(["FAILED tests/test_x.py::test_a - assert 1 == 2"]), null);
+});
+
+test("dbReachable은 응답하는 포트와 닫힌 포트를 구분한다", async () => {
+  const dir = await tmp();
+  await mkdir(join(dir, "backend"), { recursive: true });
+  const server = createServer().listen(0, "127.0.0.1");
+  await new Promise((r) => server.once("listening", r));
+  const { port } = server.address();
+  await writeFile(join(dir, "backend", ".env"), `DATABASE_URL=postgresql+psycopg://u:p@127.0.0.1:${port}/db  # 설명\n`);
+  assert.equal((await dbReachable(dir)).up, true);
+  await new Promise((r) => server.close(r));
+  assert.equal((await dbReachable(dir)).up, false);
+  assert.equal(await dbReachable(await tmp()), null);
+});

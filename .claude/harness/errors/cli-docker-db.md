@@ -14,6 +14,12 @@
 - Never: DB가 "시작됨"이라는 사실만으로 마이그레이션을 시작하지 않는다. `healthy`가 될 때까지 기다린다. (이유: 첫 `setup`의 마이그레이션이 `server closed the connection unexpectedly`로 4번 중 1번꼴로 실패했다)
 - Always: `docker-compose.yml`의 healthcheck가 유지되는지 `cli.test.js`의 확인을 통과시킨다.
 
+## 실패 안내
+
+- Always: 실패를 알릴 때는 스택 트레이스 대신 "원인 한 줄, 출력에서 찾은 실제 에러 줄, 해결 순서"를 보여 준다. 원인을 모르는 실패만 마지막 로그를 그대로 보여 준다. (이유: `test`가 SQLAlchemy 스택 40줄을 내보내 실제 원인인 "5432 연결 실패"가 묻혔다) 분류는 `packages/meerkit/src/explain.js`에 추가한다.
+- Always: DB가 필요한 단계(`pytest`)는 실행 전에 포트가 응답하는지 먼저 확인하고, 안 되면 실행하지 않고 원인을 알린다.
+- Never: 다른 프로그램·컨테이너가 쓰는 포트나 컨테이너를 CLI가 멈추거나 지우지 않는다. 이름과 확인 방법만 알려 준다.
+
 ## 포트
 
 - Always: 포트 사용 여부는 `127.0.0.1`과 전체 주소(wildcard) 둘 다 시도해서 판단한다. (이유: 모든 주소로 연 서버를 빈 포트로 오판해 서버를 켠 뒤 `EADDRINUSE`가 났다)

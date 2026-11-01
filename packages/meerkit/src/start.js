@@ -1,11 +1,12 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 
+import { dbReachable } from "./db.js";
 import { checkPorts, printChecks, runToolChecks } from "./checks.js";
 import { parsePorts } from "./ports.js";
 import { runLogged } from "./run.js";
 import { findProjectRoot, printFailure, startServers } from "./setup.js";
-import { bold, cyan, fail, info, ok } from "./ui.js";
+import { bold, cyan, fail, info, ok, warn } from "./ui.js";
 
 const LOG_NAME = "meerkit-setup.log";
 
@@ -65,6 +66,10 @@ export async function runStart(args) {
       return 1;
     }
     ok("데이터베이스 실행 중");
+  } else {
+    // --no-db: DB를 켜 주지 않으므로, 응답하지 않으면 API가 실패한다는 것을 먼저 알려 준다
+    const db = await dbReachable(root);
+    if (db && !db.up) warn(`DB(${db.host}:${db.port})가 응답하지 않습니다. 서버는 켜지지만 DB를 쓰는 API는 실패합니다. (${cyan("npx @snackcup/meerkit start")} 로 DB까지 켤 수 있습니다)`);
   }
   return startServers(root, chosen);
 }

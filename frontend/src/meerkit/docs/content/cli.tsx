@@ -286,8 +286,13 @@ export function CliDevelop() {
         ]}
       />
       <UL>
-        <li>실패하면 화면에 마지막 로그를 보여 주고, 전체 로그는 <Ic>meerkit-test.log</Ic>에 남깁니다.</li>
-        <li><Ic>pytest</Ic>가 DB 연결 오류를 내면 <Ic>{`${CMD} start`}</Ic>로 DB를 먼저 켜세요.</li>
+        <li>
+          원인을 알 수 있는 실패(DB 연결 실패, 테이블 없음, <Ic>.env</Ic> 값 누락, 파이썬 모듈 없음, 포트 사용 중)는 스택 트레이스 대신 <strong>원인, 실제 에러 줄, 해결 순서</strong>를 보여 줍니다.
+          알 수 없는 실패는 마지막 로그를 그대로 보여 줍니다. 전체 로그는 <Ic>meerkit-test.log</Ic>에 남습니다.
+        </li>
+        <li>
+          <Ic>pytest</Ic>는 DB가 필요합니다. DB가 응답하지 않으면 pytest를 돌리지 않고 바로 어느 주소·포트에 연결하지 못했는지와 해결 방법을 알려 줍니다. 이럴 때는 <Ic>{`${CMD} status`}</Ic>로 확인한 뒤 <Ic>{`${CMD} start`}</Ic>로 DB를 켜세요.
+        </li>
       </UL>
 
       <H2>update</H2>
