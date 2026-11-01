@@ -453,3 +453,12 @@ test("dbReachable은 응답하는 포트와 닫힌 포트를 구분한다", asyn
   assert.equal((await dbReachable(dir)).up, false);
   assert.equal(await dbReachable(await tmp()), null);
 });
+
+import { parseMappedPort } from "../src/dbport.js";
+
+test("compose port 출력에서 호스트 포트를 읽는다", () => {
+  assert.equal(parseMappedPort("0.0.0.0:5432\n"), 5432);
+  assert.equal(parseMappedPort("[::]:5433"), 5433);
+  assert.equal(parseMappedPort(""), null);
+  assert.equal(parseMappedPort("invalid IP:0"), null); // 열리지 않은 컨테이너
+});
