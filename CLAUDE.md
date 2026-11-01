@@ -100,7 +100,7 @@ Claude Code 같은 AI 도구가 이 저장소에서 코드를 만들 때 따르�
 
 - 킷은 서비스 코드(`backend/app/features/`, `frontend/src/app/(service)/`)를 import 하지 않는다.
   - 백엔드: `backend/tests/test_import_rules.py`가 검사한다.
-  - 프론트: 자동 검사가 아직 없다. 직접 지키고 리뷰에서 확인한다 (향후 ESLint `no-restricted-imports`로 추가 가능).
+  - 프론트: ESLint `no-restricted-imports`가 검사한다 (`frontend/eslint.config.mjs`). 킷 → `@/app` import, 서비스 화면(`src/app/(service)`) → `@/meerkit/…` 내부 파일 import가 대상이다.
 - `src/app/`은 킷을 `@/meerkit`(공개 API)으로만 import 한다.
 - 프론트는 `components → hooks → api → client` 방향으로만 import 한다.
 - 백엔드는 `router → service → repository` 방향으로만 import 한다. SQL은 repository에만 둔다.
