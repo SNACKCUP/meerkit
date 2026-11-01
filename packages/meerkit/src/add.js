@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
 import { findProjectRoot } from "./setup.js";
+import { missingSetup } from "./start.js";
 import { bold, cyan, dim, fail, info, ok, warn } from "./ui.js";
 
 // 킷 패키지·파이썬 예약어와 겹치는 이름은 쓰지 않는다
@@ -156,6 +157,8 @@ export async function runAdd(args) {
   if (registered) info(`  ${dim("~")} backend/app/api.py (라우터 등록)`);
   else warn(`backend/app/api.py 를 자동으로 고치지 못했습니다. 직접 추가하세요:\n    from app.features.${name}.router import router as ${name}_router\n    api_router.include_router(${name}_router)`);
   const url = name.replaceAll("_", "-");
+  const notReady = missingSetup(root);
+  if (notReady.length) warn(`아직 세팅이 끝나지 않은 프로젝트입니다. 없는 것: ${notReady.join(", ")}\n    서버를 켜거나 test를 하기 전에 ${cyan("npx @snackcup/meerkit setup")} 을 먼저 실행하세요.`);
   info(`\n다음 순서\n  1. 서버를 다시 켜고 http://localhost:8000/docs 에서 /${url} 확인, 화면은 http://localhost:3000/${url}\n  2. 테이블이 필요하면 models.py를 만들고 ${cyan("uv run alembic revision --autogenerate -m \"...\"")} (backend 폴더)\n  3. ${cyan("npx @snackcup/meerkit test")} 로 확인`);
   return 0;
 }

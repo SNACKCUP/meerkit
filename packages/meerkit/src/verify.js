@@ -1,6 +1,8 @@
 import { rmSync } from "node:fs";
 import { join } from "node:path";
 
+import { dbReachable } from "./db.js";
+import { dbUnreachable, explainFailure, formatExplanation } from "./explain.js";
 import { findProjectRoot } from "./setup.js";
 import { missingSetup } from "./start.js";
 import { runLogged } from "./run.js";
@@ -45,8 +47,15 @@ export async function runTest(args) {
   const logPath = join(root, LOG_NAME);
   rmSync(logPath, { force: true }); // 이번 실행의 출력만 남긴다
   const results = [];
+  // pytest는 DB가 필요하다. 응답하지 않으면 돌려서 스택 트레이스를 보는 대신 바로 원인을 알려 준다.
+  const db = steps.some((s) => s.title === "백엔드 pytest") ? await dbReachable(root, "TEST_DATABASE_URL") : null;
   for (const s of steps) {
     const t0 = Date.now();
+    if (s.title === "백엔드 pytest" && db && !db.up) {
+      fail(`${s.title} ${dim("실행하지 않음")}`);
+      results.push({ ...s, code: 1, tail: [], explained: dbUnreachable(db.host, db.port), skipped: true });
+      continue;
+    }
     process.stdout.write(`${dim("…")} ${s.title}`);
     const r = await runLogged(s.cmd, s.args, { cwd: join(root, s.cwd), label: s.title, logFile: logPath, tailLines: 40 });
     const sec = ((Date.now() - t0) / 1000).toFixed(1);
@@ -63,10 +72,17 @@ export async function runTest(args) {
     return 0;
   }
   for (const f of failed) {
-    fail(bold(`${f.title} 실패`));
-    for (const line of f.tail) console.log(`    ${dim(line.slice(0, 160))}`);
-    if (f.hint && shouldHint(f, f.tail)) console.log(`  참고: ${f.hint}`);
+    const explained = f.explained ?? explainFailure(f.tail);
+    fail(bold(`${f.title} ${f.skipped ? "건너뜀" : "실패"}`));
+    if (explained) {
+      // 원인을 알아낸 경우: 스택 트레이스 대신 정확한 에러 줄과 해결 순서만 보여 준다
+      for (const line of formatExplanation(explained)) console.log(line);
+    } else {
+      for (const line of f.tail) console.log(`    ${dim(line.slice(0, 160))}`);
+      if (f.hint && shouldHint(f, f.tail)) console.log(`  참고: ${f.hint}`);
+    }
   }
-  console.log(`\n전체 출력은 ${cyan(LOG_NAME)} 에 있습니다. (마지막 ${40}줄만 위에 보여 줍니다)`);
+  const ran = results.some((r) => r.code !== 0 && !r.skipped && !(explainFailure(r.tail)));
+  console.log(`\n전체 출력은 ${cyan(LOG_NAME)} 에 있습니다.${ran ? ` (마지막 ${40}줄만 위에 보여 줍니다)` : ""}`);
   return 1;
 }

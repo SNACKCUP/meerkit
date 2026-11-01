@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { createConnection } from "node:net";
 import { readFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { createInterface } from "node:readline/promises";
@@ -14,16 +15,30 @@ const isWin = process.platform === "win32";
 const inherit = (cmd, args, cwd) => spawnSync(cmd, args, { cwd, stdio: "inherit", shell: isWin }).status ?? 1;
 
 /** backend/.env 의 DATABASE_URL에서 호스트·포트를 읽는다. 비밀번호는 읽어도 다루지 않는다. */
-export async function databaseTarget(root) {
+export async function databaseTarget(root, key = "DATABASE_URL") {
   try {
     const text = await readFile(join(root, "backend", ".env"), "utf8");
-    const m = text.match(/^DATABASE_URL=(.+)$/m);
-    if (!m) return null;
-    const u = new URL(m[1].trim().replace(/^postgresql\+psycopg:/, "postgresql:"));
+    const m = text.match(new RegExp(`^${key}=(.+)$`, "m"));
+    const value = (process.env[key] || m?.[1] || "").split("#")[0].trim();
+    if (!value) return null;
+    const u = new URL(value.replace(/^postgresql\+psycopg:/, "postgresql:"));
     return { host: u.hostname, port: Number(u.port || 5432), local: ["localhost", "127.0.0.1", "::1"].includes(u.hostname) };
   } catch {
     return null;
   }
+}
+
+/** DB 포트가 응답하는지 본다 (연결만 열어 보고 닫는다). 주소를 읽지 못하면 null. */
+export async function dbReachable(root, key = "DATABASE_URL") {
+  const target = (await databaseTarget(root, key)) ?? (key !== "DATABASE_URL" ? await databaseTarget(root) : null);
+  if (!target) return null;
+  const up = await new Promise((resolve) => {
+    const s = createConnection({ host: target.host, port: target.port, timeout: 2000 });
+    s.once("connect", () => (s.destroy(), resolve(true)));
+    s.once("timeout", () => (s.destroy(), resolve(false)));
+    s.once("error", () => resolve(false));
+  });
+  return { ...target, up };
 }
 
 async function confirm(question, expected) {
