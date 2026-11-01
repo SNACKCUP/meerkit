@@ -37,6 +37,10 @@
 | **스타일링 / CSS**          | `.claude/harness/rules/tailwind-v4.md`      | CSS 변수 토큰, 빌드로 CSS 검증, 움직임 끄기  |
 | **DB 마이그레이션/배포**    | `.claude/harness/workflows/db-migration.md` | Alembic 순서, 롤백 계획, 무중단 스키마 변경 |
 | **pytest 로그 검사**        | `.claude/harness/errors/pytest-app-logging.md` | `app` 로거 `propagate=False`, caplog 켜고 되돌리기 |
+| **CLI / Docker / 로컬 DB**  | `.claude/harness/errors/cli-docker-db.md`   | Docker 무응답 구분, 디스크 확인, DB healthcheck, 포트 확인 |
+| **Windows / 줄바꿈 (CLI)**  | `.claude/harness/errors/cli-cross-platform.md` | LF 고정, 해시 정규화, Windows 러너 테스트 |
+| **템플릿 동기화 / npm 배포** | `.claude/harness/workflows/template-and-release.md` | Fork·템플릿 둘 다 검증, 배포 순서, E403/E404/E409 |
+| **문서 작성 / 정확성**      | `.claude/harness/rules/docs-accuracy.md`    | 없는 자동 검사 언급 금지, 설명집·`help.js` 일치 |
 
 ---
 
