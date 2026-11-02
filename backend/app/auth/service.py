@@ -154,6 +154,10 @@ def refresh_tokens(db: Session, token: str) -> tuple[str, str | None] | None:
         if row.replaced_by_id is None:  # 로그아웃·전체 폐기한 토큰
             return None
         if now - row.revoked_at <= timedelta(seconds=REFRESH_REUSE_GRACE_SECONDS):
+            # 유예는 바뀐 새 토큰이 아직 살아 있을 때만 줍니다. 그 사이 로그아웃했으면 옛 쿠키로 다시 들어오지 못합니다
+            replacement = auth_repository.get_refresh_token(db, row.replaced_by_id)
+            if replacement is None or replacement.revoked_at is not None:
+                return None
             return create_token(user.id, "access"), None
         revoked = auth_repository.revoke_refresh_family(db, row.family_id, now)
         db.commit()
@@ -167,10 +171,13 @@ def refresh_tokens(db: Session, token: str) -> tuple[str, str | None] | None:
 
 
 def revoke_refresh_token(db: Session, token: str) -> None:
-    """로그아웃: 이 기기의 리프레시 토큰만 폐기 (다른 기기는 그대로)"""
+    """로그아웃: 이 기기(같은 로그인 family)의 리프레시 토큰을 모두 폐기 (다른 기기는 그대로).
+
+    방금 회전돼 옛 토큰이 된 쿠키로 로그아웃해도 새 토큰까지 함께 막히도록 family 단위로 폐기합니다.
+    """
     row = auth_repository.get_refresh_token_by_hash(db, hash_secret(token))
-    if row is not None and row.revoked_at is None:
-        row.revoked_at = _now()
+    if row is not None:
+        auth_repository.revoke_refresh_family(db, row.family_id, _now())
         db.commit()
 
 
