@@ -41,6 +41,7 @@
 | **Windows / 줄바꿈 (CLI)**  | `.claude/harness/errors/cli-cross-platform.md` | LF 고정, 해시 정규화, Windows 러너 테스트 |
 | **템플릿 동기화 / npm 배포** | `.claude/harness/workflows/template-and-release.md` | Fork·템플릿 둘 다 검증, 배포 순서, E403/E404/E409 |
 | **문서 작성 / 정확성**      | `.claude/harness/rules/docs-accuracy.md`    | 없는 자동 검사 언급 금지, 설명집·`help.js` 일치 |
+| **서비스 화면 위치 / 로컬 확인** | `.claude/harness/rules/service-layout.md` | `(service)`·루트 주소, 내 정보는 `MePage`, 라우트 이동 뒤 서버 재시작, 저장소 memory 한계 |
 
 ---
 
