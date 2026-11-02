@@ -677,11 +677,19 @@ export function RouteGuardsDoc() {
       <H2>RequireRole</H2>
       <P>로그인 확인 후 역할까지 검사합니다. 다른 역할이면 &quot;접근 권한이 없습니다.&quot;를 보여 줍니다.</P>
       <CodeBlock title="tsx" code={`import { RequireRole, ADMIN_ROLE } from "@/meerkit";\n\n<RequireRole role={ADMIN_ROLE}>\n  <AdminMembersPage />\n</RequireRole>`} />
+      <H2>GuestOnly</H2>
+      <P>
+        <strong>로그인하지 않은 사람만</strong> 볼 화면(로그인·회원가입·아이디 찾기·비밀번호 찾기·비밀번호 재설정)을 감쌉니다.
+        로그인한 사람이 주소창으로 들어오면 화면을 보여 주지 않고 <Ic>redirectTo</Ic>(기본 <Ic>routes.home</Ic>)로 보냅니다. 킷의 <Ic>/reset-password</Ic>에는 이미 적용되어 있습니다.
+        인증 화면을 팝업 대신 페이지로 만든 서비스는 그 페이지마다 감싸 주세요. 로그인한 사람에게는 인증 팝업(<Ic>AuthDialog</Ic>)도 열리지 않습니다.
+      </P>
+      <CodeBlock title="tsx" code={`import { GuestOnly } from "@/meerkit";\n\nexport default function LoginPage() {\n  return (\n    <GuestOnly redirectTo="/projects">\n      <LoginForm />\n    </GuestOnly>\n  );\n}`} />
       <H2>Props</H2>
       <PropsTable
         rows={[
           ["children", "ReactNode", "조건을 통과했을 때 보여 줄 내용.", true],
           ["role", "RoleName", "RequireRole 전용. 필요한 역할 이름.", true],
+          ["redirectTo", "string", "GuestOnly 전용. 로그인한 사람을 보낼 주소. 기본은 routes.home."],
         ]}
       />
       <Callout tone="warn">가드는 화면 보호용입니다. 데이터 보호는 백엔드가 같은 규칙으로 다시 검증해야 합니다.</Callout>
