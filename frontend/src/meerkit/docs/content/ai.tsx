@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 
 import { AiPromptInput, type AiAgent } from "../../ai/AiPromptInput";
 import { ApiKeyInput } from "../../ai/ApiKeyInput";
+import { MultiApiKeyList, MultiApiKeyTabs } from "../../ai/api-key-settings";
 import { ThinkingIndicator } from "../../ai/ThinkingIndicator";
 import { ORB_STATES, ThinkingOrb, type OrbState } from "../../ai/ThinkingOrb";
 import { Callout, CodeBlock, DocLinks, DocTable, H2, H3, Ic, links, P, Preview, PreviewWide, PropsTable, UL } from "../ui";
@@ -341,41 +342,122 @@ export function ThinkingIndicatorDoc() {
   );
 }
 
+const demoSaved = {
+  entries: [
+    { provider: "openai" as const, model: "gpt-4o-mini", keyHint: "sk-…a1b2" },
+    { provider: "claude" as const, model: "claude-haiku-5-5", keyHint: "sk-…c3d4" },
+  ],
+  activeProvider: "openai" as const,
+  defaultProvider: "claude" as const,
+};
+
 export function ApiKeyInputDoc() {
   return (
     <>
       <P>
-        <strong>사용자가 자기 AI API 키를 넣는 입력 칸</strong>입니다. 로그인 전에도 화면에 보이지만, 입력하려고 하면 &quot;로그인이 필요해요&quot; 안내가 먼저 뜨고, 로그인한 뒤에만 키를 저장할 수 있습니다.
-        저장한 키는 <Ic>LlmPlayground</Ic>(웰컴 페이지의 AI 테스트)가 <Ic>POST /api/llm/chat</Ic>을 부를 때 헤더로 실어 보냅니다.
+        <strong>사용자가 자기 AI API 키를 넣는 입력</strong>입니다. 키를 한 개만 받는 <Ic>ApiKeyInput</Ic>, 여러 공급자(GPT, Gemini, Claude)의 키를 받는 <Ic>MultiApiKeyList</Ic>(표)와 <Ic>MultiApiKeyTabs</Ic>(탭)가 있습니다.
+        모두 로그인 전에도 화면에 보이지만, 입력하려고 하면 &quot;로그인이 필요해요&quot; 안내가 먼저 뜨고 로그인한 뒤에만 키를 저장할 수 있습니다.
       </P>
       <Callout tone="warn">
-        <strong>키는 브라우저 메모리에만 둡니다.</strong> localStorage, sessionStorage, 쿠키에 저장하지 않고 새로고침하거나 로그아웃하면 지워집니다. 서버도 키를 저장하거나 로그에 남기지 않습니다.
-        요청 주소(URL)와 본문에는 넣지 않고 <Ic>X-LLM-API-Key</Ic> 헤더로만 보냅니다.
+        <strong>키를 저장하는 서비스라면 서버로 보내세요.</strong> 저장 버튼에 <Ic>onSave</Ic>를 연결하면 키는 저장할 때 서버로 가고, 화면에는 끝자리(<Ic>keyHint</Ic>)만 남습니다.
+        서버에서는 암호화해 저장하고, 응답에 원본 키를 돌려주지 마세요. 브라우저 쪽에는 localStorage, 쿠키 등 어디에도 키를 저장하지 않습니다.
       </Callout>
+      <DocTable
+        head={["컴포넌트", "언제 쓰나", "저장 방식"]}
+        rows={[
+          ["ApiKeyInput", "키를 한 개만 받을 때.", "onSave를 넘기면 서버로 저장. 넘기지 않으면 브라우저 메모리에만 두고 요청마다 헤더로 보냅니다(웰컴 페이지의 AI 테스트 방식)."],
+          ["MultiApiKeyList · MultiApiKeyTabs", "여러 공급자 중 서비스가 고른 것만 받을 때.", "항상 onSave로 서버에 저장합니다."],
+        ]}
+      />
 
-      <H2>Preview</H2>
+      <H2>ApiKeyInput</H2>
       <P>로그인하지 않은 상태에서 칸을 눌러 보세요. 취소는 닫기, 확인은 로그인 창을 엽니다. 로그인한 뒤에는 키를 입력하고 저장할 수 있습니다.</P>
       <Preview code={`<ApiKeyInput />`}>
         <div className="mx-auto w-full max-w-md"><ApiKeyInput /></div>
       </Preview>
-
-      <H2>What users can do</H2>
+      <H3>서버로 저장하는 방식</H3>
+      <P><Ic>onSave</Ic>를 넘기면 저장 버튼이 값을 서비스에 넘기고, 서비스가 서버로 보냅니다. 성공하면 입력한 키는 지워지고 끝자리만 보입니다.</P>
+      <Preview code={`<ApiKeyInput provider="claude" showModel onSave={save} />`}>
+        <div className="mx-auto w-full max-w-xl"><ApiKeyInput provider="claude" showModel onSave={() => {}} initial={{ keyHint: "sk-…c3d4", model: "claude-haiku-5-5" }} /></div>
+      </Preview>
+      <CodeBlock
+        title="서비스 코드"
+        code={`import { ApiKeyInput, type ApiKeyInputValue } from "@/meerkit";\n\nasync function save(v: ApiKeyInputValue) {\n  // v = { provider, model, apiKey? } — apiKey는 이번에 새로 입력한 경우에만 있습니다.\n  const res = await fetch("/api/ai-key", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(v) });\n  if (!res.ok) throw new Error("저장하지 못했어요."); // 던진 메시지가 화면에 보입니다\n}\n\n<ApiKeyInput provider="claude" showModel initial={saved} onSave={save} />`}
+      />
+      <H3>메모리에만 두는 방식</H3>
+      <P>
+        <Ic>onSave</Ic>가 없으면 키는 브라우저 메모리에만 있고 새로고침이나 로그아웃하면 지워집니다. 요청할 때 <Ic>X-LLM-API-Key</Ic> 헤더로만 보내고 서버는 저장하거나 로그에 남기지 않습니다.
+        서버에 키를 두지 않는 가벼운 데모나 개인용 도구에 맞는 방식이고, 웰컴 페이지의 AI 테스트(<Ic>LlmPlayground</Ic>)가 이렇게 씁니다.
+      </P>
       <DocTable
         head={["동작", "방법"]}
         rows={[
           ["로그인 전에 입력 시도", "칸을 누르면 로그인 안내 창이 뜹니다. 취소하면 닫히고, 확인하면 로그인 창이 열립니다."],
-          ["키 저장", "로그인한 뒤 키(sk-...)를 입력하고 저장을 누릅니다. 모양이 맞지 않으면 안내가 나옵니다."],
+          ["키 저장", "로그인한 뒤 키를 입력하고 저장을 누릅니다. 공급자별 키 모양(OpenAI sk-, Gemini AIza, Claude sk-ant-)이 맞지 않으면 안내가 나옵니다."],
           ["키 보기·가리기", "칸 오른쪽의 눈 아이콘으로 입력한 글자를 확인합니다."],
-          ["키 지우기", "저장하면 앞 3자리와 뒤 4자리만 보이고, 지우기를 누르면 사라집니다."],
+          ["키 지우기", "메모리 방식: 저장하면 앞 3자리와 뒤 4자리만 보이고, 지우기를 누르면 사라집니다."],
+          ["모델 고르기", "showModel을 켜면 모델 선택이 생깁니다."],
+        ]}
+      />
+      <CodeBlock
+        title="메모리 방식에서 값 읽기"
+        code={`import { ApiKeyInput, useLlmKeyStore } from "@/meerkit";\n\n<ApiKeyInput provider="claude" showModel />\n\nconst apiKey = useLlmKeyStore((s) => s.apiKey);\nconst model = useLlmKeyStore((s) => s.model);     // 비어 있으면 서비스의 기본 모델`}
+      />
+      <PropsTable
+        rows={[
+          ["className", "string", "바깥 요소에 붙일 클래스."],
+          ["provider", '"openai" | "gemini" | "claude"', "어느 공급자의 키를 받을지. 기본 openai. 안내 문구와 키 모양 검사가 공급자에 맞게 바뀝니다."],
+          ["showModel", "boolean", "모델 고르는 칸을 보입니다. 기본 false."],
+          ["models", "{ id, label }[]", "모델 목록을 바꿉니다. 기본은 공급자의 기본 목록(ai/providers.ts)."],
+          ["onSave", "(v: ApiKeyInputValue) => void | Promise<void>", "넘기면 서버로 저장하는 방식이 됩니다. 실패하면 throw 하세요."],
+          ["initial", "{ keyHint?, model? }", "서버에 저장된 값(onSave와 함께). 원본 키는 받지 않고 끝자리만 받습니다."],
         ]}
       />
 
-      <H2>How to use</H2>
-      <CodeBlock
-        title="어느 화면에서든"
-        code={`import { ApiKeyInput, useLlmKeyStore } from "@/meerkit";\n\n<ApiKeyInput />\n\n// 저장된 키 읽기 (메모리에서만)\nconst apiKey = useLlmKeyStore((s) => s.apiKey);`}
+      <H2>MultiApiKeyList · MultiApiKeyTabs</H2>
+      <P>
+        서비스가 <strong>여러 공급자의 키</strong>를 받을 때 씁니다. 받을 공급자는 <Ic>providers</Ic>로 서비스가 고릅니다(예: GPT와 Claude만).
+        표 형태(<Ic>MultiApiKeyList</Ic>)와 탭 형태(<Ic>MultiApiKeyTabs</Ic>)는 값과 동작이 같고 모양만 다릅니다. 탭은 한 줄로 늘어서고 넘치면 옆으로 밀어 봅니다.
+      </P>
+      <H3>두 가지 선택은 뜻이 다릅니다</H3>
+      <DocTable
+        head={["선택", "뜻", "몇 개까지"]}
+        rows={[
+          ["이 키로 사용", "지금 AI를 부를 때 쓸 키입니다. 사용자가 고릅니다.", "라디오라서 하나만 고를 수 있습니다. 키가 입력된 공급자만 고를 수 있습니다."],
+          ["기본 키", "사용 중인 키가 한도 초과·만료·오류로 막혔을 때 대신 쓸 키입니다. \"기본 키\" 옆 (i)에 마우스를 올리면 설명이 나옵니다.", "하나만 지정합니다. 키가 입력된 공급자만 지정할 수 있습니다. 사용 중인 키를 기본 키로 지정하면 다른 키로 바뀌지 않습니다."],
+        ]}
       />
-      <PropsTable rows={[["className", "string", "바깥 요소에 붙일 클래스."]]} />
+      <Callout tone="info">
+        <strong>자동 전환은 호출이 실제로 실패했을 때 서버(또는 서비스 코드)가 합니다.</strong> 화면 컴포넌트는 실패를 알 수 없으니, 아래 <Ic>failoverApiKeys</Ic>로 다음 상태를 계산해 저장하세요.
+        자동 전환이 필요 없는 서비스는 <Ic>autoFailover=&#123;false&#125;</Ic>로 &quot;기본 키&quot;를 화면에서 뺄 수 있습니다. 공급자를 하나만 넘겨도 대체할 키가 없으니 나타나지 않습니다.
+      </Callout>
+      <PreviewWide code={`<MultiApiKeyList providers={["openai", "claude"]} initial={saved} onSave={save} />`}>
+        <div className="mx-auto w-full max-w-5xl"><MultiApiKeyList providers={["openai", "claude"]} initial={demoSaved} onSave={() => {}} /></div>
+      </PreviewWide>
+      <PreviewWide code={`<MultiApiKeyTabs initial={saved} onSave={save} />`}>
+        <div className="mx-auto w-full max-w-xl"><MultiApiKeyTabs initial={demoSaved} onSave={() => {}} /></div>
+      </PreviewWide>
+      <PreviewWide code={`<MultiApiKeyTabs providers={["openai", "claude"]} autoFailover={false} onSave={save} />`}>
+        <div className="mx-auto w-full max-w-xl"><MultiApiKeyTabs providers={["openai", "claude"]} autoFailover={false} initial={demoSaved} onSave={() => {}} /></div>
+      </PreviewWide>
+      <CodeBlock
+        title="저장 연결 (서비스 코드)"
+        code={`import { MultiApiKeyTabs, type ApiKeySavePayload } from "@/meerkit";\n\nasync function save(payload: ApiKeySavePayload) {\n  // payload = { activeProvider, defaultProvider, keys: [{ provider, model, apiKey? }] }\n  // activeProvider = 이 키로 사용, defaultProvider = 기본 키(자동 전환을 안 쓰면 null)\n  // apiKey는 이번에 새로 입력한 키만 있습니다. 없으면 서버에 저장된 키를 그대로 씁니다.\n  const res = await fetch("/api/ai-keys", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });\n  if (!res.ok) throw new Error("저장하지 못했어요."); // 던진 메시지가 화면에 보입니다\n}\n\n<MultiApiKeyTabs providers={["openai", "gemini"]} initial={saved} onSave={save} />`}
+      />
+      <CodeBlock
+        title="키가 막혔을 때 (서버 또는 서비스 코드)"
+        code={`import { failoverApiKeys } from "@/meerkit";\n\n// 사용 중이던 openai 키가 한도 초과(LLM_QUOTA_EXCEEDED)로 실패했다면\nconst { state, switchedTo } = failoverApiKeys(\n  { activeProvider: "openai", defaultProvider: "claude", keys: [{ provider: "openai" }, { provider: "claude" }] },\n  "openai",\n);\n// state.activeProvider === "claude" (기본 키가 사용 중인 키가 됩니다)\n// switchedTo: "claude" (바꿀 키가 없으면 null)\n// 사용 중인 키 자체가 기본 키로 지정돼 있으면 전환하지 않고 switchedTo는 null입니다.`}
+      />
+      <PropsTable
+        rows={[
+          ["onSave", "(payload) => void | Promise<void>", "저장 버튼을 누르면 호출됩니다. 실패하면 throw 하세요.", true],
+          ["providers", "ProviderId[]", "키를 받을 공급자. 기본은 openai, gemini, claude 모두."],
+          ["models", "Partial<Record<ProviderId, { id, label }[]>>", "공급자별 모델 목록을 바꿉니다."],
+          ["initial", "{ entries: { provider, model?, keyHint? }[]; activeProvider?; defaultProvider? }", "서버에 저장된 값. 수정 화면에서 넘기면 \"저장됨 sk-…a1b2\"로 보입니다."],
+          ["autoFailover", "boolean", "기본 키(자동 전환)를 쓸지. 기본 true. false면 기본 키 지정이 화면에서 빠집니다."],
+          ["className", "string", "바깥 요소에 붙일 클래스."],
+        ]}
+      />
 
       <H2>LlmPlayground</H2>
       <P>
