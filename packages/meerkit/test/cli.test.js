@@ -101,6 +101,9 @@ test("diagnose: 로그에서 흔한 원인을 알아본다", () => {
   assert.match(diagnose(["Cannot connect to the Docker daemon"]).join(), /Docker Desktop/);
   assert.match(diagnose(["Bind for 0.0.0.0:5432 failed: port is already allocated"]).join(), /포트/);
   assert.match(diagnose(["getaddrinfo ENOTFOUND registry.npmjs.org"]).join(), /네트워크/);
+  const auth = diagnose(['FATAL: password authentication failed for user "starter"']).join();
+  assert.match(auth, /lsof/);
+  assert.match(auth, /down -v/);
   assert.deepEqual(diagnose(["알 수 없는 오류"]), []);
   assert.deepEqual(diagnose(), []);
 });
@@ -434,6 +437,9 @@ test("테이블·환경 변수·모듈·포트 오류를 알아본다", () => {
   assert.match(explainFailure(['E   psycopg.errors.UndefinedTable: relation "meetings" does not exist']).summary, /'meetings'/);
   assert.match(explainFailure(["database_url", "  Field required [type=missing]"]).summary, /DATABASE_URL/);
   assert.match(explainFailure(["ModuleNotFoundError: No module named 'app.features.meeting'"]).fixes.join("\n"), /uv add app/);
+  const pw = explainFailure(['connection to server at "127.0.0.1", port 5432 failed: FATAL: password authentication failed for user "starter"']);
+  assert.match(pw.summary, /비밀번호/);
+  assert.match(pw.fixes.join("\n"), /lsof/);
   assert.match(explainFailure(["Error: listen EADDRINUSE: address already in use :::8000"]).summary, /8000/);
 });
 

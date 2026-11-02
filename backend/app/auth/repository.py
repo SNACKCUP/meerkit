@@ -147,8 +147,13 @@ def get_refresh_token_by_hash(db: Session, token_hash: str) -> RefreshToken | No
     return db.scalar(select(RefreshToken).where(RefreshToken.token_hash == token_hash).with_for_update())
 
 
+def get_refresh_token(db: Session, token_id: int) -> RefreshToken | None:
+    """id로 발급 기록 1건 (회전으로 바뀐 새 토큰이 아직 살아 있는지 볼 때)"""
+    return db.get(RefreshToken, token_id)
+
+
 def revoke_refresh_family(db: Session, family_id: str, now: datetime) -> int:
-    """한 로그인에서 이어진 토큰을 모두 폐기 (이미 바뀐 토큰이 다시 왔을 때)"""
+    """한 로그인에서 이어진 토큰을 모두 폐기 (로그아웃, 이미 바뀐 토큰이 다시 왔을 때)"""
     result = db.execute(
         update(RefreshToken)
         .where(RefreshToken.family_id == family_id, RefreshToken.revoked_at.is_(None))

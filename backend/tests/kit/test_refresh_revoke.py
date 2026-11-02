@@ -83,6 +83,30 @@ def test_logout_revokes_only_this_device(client, make_user):  # client: DB 를 �
         assert _refresh_with(phone, phone_token).status_code == 200  # 휴대폰은 그대로
 
 
+def test_logout_closes_reuse_grace_for_old_cookie(client, make_user):
+    # 갱신으로 바뀐 옛 쿠키는 다른 탭 때문에 10초 유예가 있지만, 그 사이 로그아웃했으면 다시 들어오지 못함
+    make_user("user01")
+    old = _login(client)
+    new = _refresh_with(client, old).cookies[COOKIE]
+    client.cookies.clear()
+    client.cookies.set(COOKIE, new, path="/api/auth")
+    assert client.post("/api/auth/logout").status_code == 204
+    assert _refresh_with(client, old).status_code == 401  # 유예 시간 안이어도 거절
+    assert _refresh_with(client, new).status_code == 401
+
+
+def test_logout_with_rotated_cookie_also_revokes_new_token(client, make_user):
+    # 옛 쿠키로 로그아웃해도 같은 로그인의 새 토큰까지 함께 폐기
+    make_user("user01")
+    old = _login(client)
+    new = _refresh_with(client, old).cookies[COOKIE]
+    client.cookies.clear()
+    client.cookies.set(COOKIE, old, path="/api/auth")
+    assert client.post("/api/auth/logout").status_code == 204
+    assert _refresh_with(client, new).status_code == 401
+    assert _refresh_with(client, old).status_code == 401
+
+
 def test_password_change_logs_out_other_devices(client, make_user):
     make_user("user01")
     with TestClient(app) as other, TestClient(app) as me:
