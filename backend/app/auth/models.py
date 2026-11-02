@@ -38,6 +38,19 @@ class PasswordResetToken(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+# 아이디 찾기 메일을 보낸 기록. 같은 회원에게 너무 자주 보내지 않도록(발송 간격·하루 한도) 시각만 남깁니다.
+# 아이디·이메일 원문은 저장하지 않고, 하루가 지난 행은 app.auth.cleanup 이 지웁니다.
+class LoginIdMail(Base):
+    __tablename__ = "auth_login_id_mails"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    # 회원이 지워지면 기록도 같이 지워집니다
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )
+
+
 # 발급한 리프레시 토큰 (#55). 토큰은 JWT 지만 서버가 여기 적어 두고 갱신할 때마다 확인해서, 로그아웃·비밀번호 변경 뒤에는
 # 복사된 토큰도 쓸 수 없게 합니다. 갱신할 때마다 새 토큰으로 바꾸고(회전) 옛 행에 replaced_by_id 를 남깁니다.
 # 이미 바뀐 토큰이 다시 오면 탈취로 보고 같은 family(한 번의 로그인에서 이어진 토큰들)를 모두 폐기합니다.
