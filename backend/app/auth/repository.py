@@ -1,4 +1,4 @@
-"""이메일 인증번호·비밀번호 재설정 토큰·리프레시 토큰 테이블 접근 (Spring의 Repository/DAO 역할).
+"""이메일 인증번호·비밀번호 재설정 토큰·아이디 찾기 메일·리프레시 토큰 테이블 접근 (Spring의 Repository/DAO 역할).
 
 SQL(쿼리)은 이 파일에만 둡니다. 저장(commit)은 하지 않고, 부르는 service·cleanup이 정합니다.
 """
@@ -8,7 +8,12 @@ from datetime import datetime
 from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.orm import Session
 
-from app.auth.models import EmailVerification, PasswordResetToken, RefreshToken
+from app.auth.models import (
+    EmailVerification,
+    LoginIdMail,
+    PasswordResetToken,
+    RefreshToken,
+)
 from app.users.models import User
 
 
@@ -106,6 +111,32 @@ def count_email_verifications_before(db: Session, cutoff: datetime) -> int:
     return db.scalar(
         select(func.count(EmailVerification.id)).where(EmailVerification.created_at < cutoff)
     ) or 0
+
+
+# ---- 아이디 찾기 메일 ----
+
+
+def login_id_mails_since(db: Session, user_id: int, since: datetime) -> tuple[int, datetime | None, datetime | None]:
+    """since 이후 이 회원에게 보낸 아이디 안내 메일 (개수, 가장 이른 시각, 가장 늦은 시각). 발송 간격·하루 한도 검사용"""
+    row = db.execute(
+        select(
+            func.count(LoginIdMail.id),
+            func.min(LoginIdMail.created_at),
+            func.max(LoginIdMail.created_at),
+        ).where(LoginIdMail.user_id == user_id, LoginIdMail.created_at >= since)
+    ).one()
+    return row[0], row[1], row[2]
+
+
+def count_login_id_mails_before(db: Session, cutoff: datetime) -> int:
+    """delete_login_id_mails_before 대상 개수 (--dry-run 용)"""
+    return db.scalar(select(func.count(LoginIdMail.id)).where(LoginIdMail.created_at < cutoff)) or 0
+
+
+def delete_login_id_mails_before(db: Session, cutoff: datetime) -> int:
+    """cutoff 이전 아이디 안내 메일 기록을 지우고 지운 개수를 돌려줌 (발송 제한에 하루치만 필요)"""
+    result = db.execute(delete(LoginIdMail).where(LoginIdMail.created_at < cutoff))
+    return result.rowcount or 0
 
 
 # ---- 리프레시 토큰 (#55) ----

@@ -11,7 +11,12 @@ from fastapi import BackgroundTasks
 from sqlalchemy.orm import Session
 
 from app.auth import repository as auth_repository
-from app.auth.models import EmailVerification, PasswordResetToken, RefreshToken
+from app.auth.models import (
+    EmailVerification,
+    LoginIdMail,
+    PasswordResetToken,
+    RefreshToken,
+)
 from app.core.config import settings
 from app.core.exceptions import AppError
 from app.core.security import (
@@ -189,7 +194,7 @@ def user_from_token(db: Session, token: str, token_type: str) -> User | None:
     return user
 
 
-# ---- 메일 발송 횟수 제한 (인증번호·비밀번호 재설정 공통) ----
+# ---- 메일 발송 횟수 제한 (인증번호·비밀번호 재설정·아이디 찾기 공통) ----
 
 
 def mail_retry_after(count_today: int, first_today: datetime | None, last: datetime | None) -> int | None:
@@ -300,6 +305,36 @@ def signup(db: Session, data: dict, *, verification_token: str | None) -> User:
         consume_email_verification(db, verification_token, data["email"])
         verified = True
     return user_service.create_user(db, **data, email_verified=verified)
+
+
+# ---- 아이디 찾기 ----
+
+
+def request_login_id(db: Session, tasks: BackgroundTasks, email: str) -> None:
+    """가입한 이메일로 아이디를 메일로 보냅니다. 가입 여부를 알려 주지 않도록 어떤 경우에도 조용히 끝납니다.
+
+    아이디는 메일 본문에만 넣고 로그에는 남기지 않습니다 (회원 번호만 남김).
+    """
+    user = repository.get_by_email(db, email.strip().lower())
+    if user is None or not user.is_active or user.deactivated_at is not None or user.deleted_at is not None:
+        return
+    count, first, last = auth_repository.login_id_mails_since(db, user.id, _now() - timedelta(days=1))
+    if mail_retry_after(count, first, last) is not None:
+        logger.info("아이디 찾기 메일 제한으로 건너뜀 user_id=%s", user.id)
+        return
+    auth_repository.add(db, LoginIdMail(user_id=user.id, created_at=_now()))
+    db.commit()
+    tasks.add_task(
+        send_mail,
+        user.email,
+        "login_id",
+        {
+            "name": user.name,
+            "login_id": user.login_id,
+            "has_password": user.has_password,
+            "login_link": settings.frontend_base_url.rstrip("/"),
+        },
+    )
 
 
 # ---- 비밀번호 찾기·재설정·변경 ----

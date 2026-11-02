@@ -16,6 +16,7 @@ from app.auth import service
 from app.auth.deps import get_current_user
 from app.auth.schemas import (
     EmailCodeRequest,
+    ForgotIdRequest,
     ForgotPasswordRequest,
     LoginId,
     LoginIdCheck,
@@ -138,6 +139,15 @@ def refresh(
     if new_refresh is not None:  # 갱신할 때마다 새 리프레시 토큰으로 바꿈 (회전)
         set_refresh_cookie(response, new_refresh)
     return TokenResponse(access_token=access_token)
+
+
+@router.post(
+    "/id/forgot",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="아이디 찾기 메일 요청 (가입 여부와 관계없이 항상 204, 같은 회원 60초 간격·하루 10회)",
+)
+def forgot_id(body: ForgotIdRequest, tasks: BackgroundTasks, db: Session = Depends(get_db)):
+    service.request_login_id(db, tasks, body.email)
 
 
 @router.post(
