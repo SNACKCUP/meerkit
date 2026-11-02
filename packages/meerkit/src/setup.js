@@ -28,7 +28,7 @@ export function diagnose(lines = []) {
   if (/port is already allocated|address already in use|bind for/i.test(text)) tips.push("이미 쓰고 있는 포트가 있습니다. 해당 포트를 쓰는 프로그램을 종료하거나 이전에 띄운 컨테이너를 `docker compose down`으로 내려 주세요.");
   if (/unknown flag: --wait/i.test(text)) tips.push("Docker Compose가 오래된 버전입니다. Docker Desktop을 최신 버전으로 업데이트하세요.");
   if (/Cannot connect to the Docker daemon|docker daemon|error during connect/i.test(text)) tips.push("Docker Desktop이 꺼져 있습니다. 실행하고 완전히 켜진 뒤 다시 시도하세요.");
-  if (/password authentication failed/i.test(text)) tips.push("이전 실행의 DB 볼륨이 남아 있어 비밀번호가 맞지 않습니다. `docker compose down -v`로 지운 뒤 다시 실행하세요 (DB 데이터가 모두 지워집니다).");
+  if (/password authentication failed/i.test(text)) tips.push("5432 포트에서 응답한 DB가 `starter` 계정의 비밀번호를 거절했습니다. 먼저 5432를 쓰는 것이 무엇인지 확인하세요: `lsof -nP -iTCP:5432 -sTCP:LISTEN` (Windows: `netstat -ano | findstr :5432`). 직접 설치한 Postgres나 다른 프로젝트의 DB 컨테이너라면 그것을 끄거나 포트를 바꾸세요. 이 프로젝트의 DB가 맞다면 이전 실행의 볼륨이 남은 것이니 `docker compose down -v` 후 다시 실행하세요 (DB 데이터가 모두 지워집니다).");
   if (/Connection refused|could not connect to server/i.test(text)) tips.push("DB에 연결하지 못했습니다. `docker compose ps`로 db가 떠 있는지 확인하세요.");
   return tips;
 }

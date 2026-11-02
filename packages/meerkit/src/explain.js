@@ -26,6 +26,21 @@ const find = (lines, re) => lines.find((l) => re.test(l));
 export function explainFailure(lines) {
   const text = lines.join("\n");
 
+  // DB가 비밀번호를 거절함: 같은 포트를 다른 DB가 쓰고 있거나 이전 볼륨이 남은 경우
+  const auth = text.match(/password authentication failed for user "([^"]+)"/i);
+  if (auth) {
+    const port = text.match(/port (\d+)/i)?.[1] ?? "5432";
+    return {
+      summary: `DB가 '${auth[1]}' 계정의 비밀번호를 거절했습니다`,
+      evidence: clean(find(lines, /password authentication failed/i) ?? ""),
+      fixes: [
+        `${port} 포트를 쓰는 프로그램 확인: lsof -nP -iTCP:${port} -sTCP:LISTEN  (Windows: netstat -ano | findstr :${port})`,
+        "직접 설치한 Postgres나 다른 프로젝트의 DB 컨테이너가 쓰고 있다면 그것을 끄거나, docker-compose.yml과 backend/.env의 포트를 함께 바꾸세요",
+        "이 프로젝트의 DB가 맞다면 이전 볼륨이 남은 것입니다. docker compose down -v 후 다시 setup (DB 데이터가 모두 지워집니다)",
+      ],
+    };
+  }
+
   // DB에 연결하지 못함 (psycopg / SQLAlchemy)
   if (/connection to server at|Connection refused|could not connect to server|psycopg\.OperationalError|OperationalError.*connect/i.test(text)) {
     const at = text.match(/connection to server at "([^"]+)"(?:[^\n]*?port (\d+))?/i) ?? text.match(/host: '([^']+)', port: (\d+)/);
