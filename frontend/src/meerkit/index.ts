@@ -3,6 +3,8 @@ export { WelcomePage } from "./welcome/WelcomePage";
 export { DocsView } from "./docs/DocsView";
 export { DocsSearch } from "./docs/DocsSearch";
 export { allDocs } from "./docs/nav";
+export { MePage, type MePageProps, type MePageTab } from "./auth/MePage";
+export { MeAvatarField, MeNicknameForm, MeProfileForm, MePasswordForm, MeWithdrawForm } from "./auth/MeSections";
 export { RequireAuth } from "./auth/guards/RequireAuth";
 export { RequireRole } from "./auth/guards/RequireRole";
 export { useAuth } from "./auth/hooks";

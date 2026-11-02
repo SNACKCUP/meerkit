@@ -47,8 +47,38 @@ export function ProfileImageDoc() {
           ["accept", "string[]", "허용하는 파일 형식. 기본 JPG·PNG·WEBP."],
           ["maxSizeMB", "number", "최대 크기(MB). 기본 2."],
           ["disabled", "boolean", "입력을 막습니다."],
+          ["showHint", "boolean", "false면 \"JPG, PNG, WEBP · 2MB 이하\" 안내 문구를 숨깁니다. 형식이나 크기가 틀렸을 때의 오류 문구는 그대로 보입니다. 기본 true."],
         ]}
       />
+      <H2>내 정보 화면을 서비스에 맞게 꾸미기</H2>
+      <P>
+        킷의 내 정보 화면(<Ic>MePage</Ic>)은 서비스 고유 설정을 끼우거나, 부분 부품만 가져다 화면을 직접 짤 수 있습니다.
+        부품은 서버 호출까지 묶여 있어서 <Ic>@/meerkit</Ic>에서 가져다 놓기만 하면 됩니다.
+      </P>
+      <CodeBlock
+        title="src/app/(service)/mypage/view.tsx 등"
+        code={`import { MePage, MeAvatarField, MeProfileForm, MePasswordForm, MeWithdrawForm } from "@/meerkit";
+
+// ① 기본 화면에 서비스 탭을 앞에 끼우기
+<MePage title="마이페이지" embedded extraTabs={[{ value: "api-key", label: "AI API 키", content: <ApiKeyInput /> }]} />
+
+// ② 부품으로 화면을 직접 짜기 (로그인한 사용자에게만 그리세요)
+<MeAvatarField showHint={false} />
+<MeProfileForm />
+<MePasswordForm />
+<MeWithdrawForm />`}
+      />
+      <PropsTable
+        rows={[
+          ["title", "string", "MePage 제목. 기본 \"내 정보\"."],
+          ["extraTabs", "{ value; label; content }[]", "기본 탭(프로필 수정, 비밀번호 변경, 탈퇴) 앞에 끼울 탭. 첫 탭이 먼저 열립니다."],
+          ["embedded", "boolean", "이미 <main> 안에 그려질 때 true. 바깥 <main>을 <div>로 바꿉니다."],
+        ]}
+      />
+      <P>
+        부품은 <Ic>MeAvatarField</Ic>(프로필 이미지), <Ic>MeNicknameForm</Ic>(닉네임, 설정에서 쓰지 않으면 아무것도 그리지 않음), <Ic>MeProfileForm</Ic>(이름·연락처·주소),
+        <Ic>MePasswordForm</Ic>(비밀번호 변경), <Ic>MeWithdrawForm</Ic>(탈퇴) 다섯 가지입니다.
+      </P>
       <H2>서버와 연결</H2>
       <P>
         마이페이지(<Ic>/me</Ic>)는 이 부품을 <Ic>POST /users/me/avatar</Ic>(multipart, 필드명 <Ic>file</Ic>)와 <Ic>DELETE /users/me/avatar</Ic>에 연결해 두었습니다.
