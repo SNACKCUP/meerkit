@@ -17,6 +17,11 @@
 
 - Never: 마운트 때마다 `POST /auth/refresh`를 무조건 호출하지 않는다. "이 브라우저에서 로그인한 적이 있음" 표시(`localStorage` 키 `meerkit-session`)가 있을 때만 호출하고, 문서 전용 배포(`docsOnly`)에서는 건너뛴다. (이유: 백엔드가 없는 환경에서 모든 docs 페이지가 500/401 콘솔 에러를 냈다)
 
+## 환경변수
+
+- Never: 빈 문자열이 들어올 수 있는 env 기본값에 `??`를 쓰지 않는다. `||`를 쓰고, 선택 항목은 `.env.example`에서 주석 처리한다. (이유: setup이 `.env.example`을 `frontend/.env.local`로 그대로 복사해 `NEXT_PUBLIC_DOCS_URL=` 같은 빈 값이 들어가고, `??`는 빈 문자열을 통과시켜 Docs 링크가 `href=""`가 됐다. `packages/meerkit/scripts/sync-template.mjs`의 치환도 같이 맞춘다)
+- Always: `NEXT_PUBLIC_*` 값을 바꾼 뒤에는 dev 서버를 다시 시작한다. (이유: 값이 빌드 때 번들에 들어간다)
+
 ## 렌더링과 DOM
 
 - Always: docs처럼 Cache Components가 이전 페이지를 숨겨 둔 채 남기는 화면에서는 DOM 조회(목차, 앵커)를 현재 `article` ref 안으로 한정한다. (이유: 숨겨진 이전 페이지의 제목이 목차에 섞였다)
