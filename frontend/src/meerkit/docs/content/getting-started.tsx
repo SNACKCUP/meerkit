@@ -360,7 +360,7 @@ Tailwind CSS v4     @import "tailwindcss" · @theme inline      유틸리티 클
       </Callout>
 
       <H2>Dark mode</H2>
-      <P>기본 제공은 라이트 테마뿐입니다. 다크 모드를 추가하려면 같은 <Ic>--mk-*</Ic> 변수만 다시 정의하면 되고, 컴포넌트는 고치지 않습니다.</P>
+      <P>라이트와 다크 모드를 지원합니다. 모든 화면 오른쪽 아래에 떠 있는 해/달 버튼으로 바꾸고(설명서 화면은 머리글의 버튼), 고른 값은 브라우저에 저장됩니다. 버튼이 필요 없으면 <Ic>meerkit.config.ts</Ic>에 <Ic>themeToggle: false</Ic>를 넣습니다. 색을 바꾸려면 같은 <Ic>--mk-*</Ic> 변수만 다시 정의하면 되고, 컴포넌트는 고치지 않습니다.</P>
       <CodeBlock title="app/globals.css" code={`:root[data-theme="dark"] {\n  --mk-background: #0b0c10;\n  --mk-foreground: #f2f3f7;\n  --mk-card: #14161c;\n  --mk-surface: #1a1d25;\n  --mk-muted: #1f222b;\n  --mk-accent: #262a34;\n  --mk-border: #2a2e39;\n  --mk-primary: #f2f3f7;\n  --mk-primary-foreground: #0b0c10;\n}`} />
 
       <H2>Radius</H2>

@@ -15,6 +15,7 @@ export const meerkitConfig = {
   docsOnly: process.env.NEXT_PUBLIC_DOCS_ONLY === "true",
   theme: userConfig.theme ?? "meerkit",
   motion: userConfig.motion ?? true,
+  themeToggle: userConfig.themeToggle ?? true,
   signup: {
     passwordConfirm: userConfig.signup?.passwordConfirm ?? false,
     optionalFields: userConfig.signup?.optionalFields ?? [],
