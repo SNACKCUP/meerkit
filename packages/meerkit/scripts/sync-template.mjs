@@ -170,11 +170,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const index = join(src, "meerkit", "index.ts");
   await writeFile(index, (await readFile(index, "utf8")).split("\n").filter((l) => !l.includes('"./docs/')).join("\n"));
 
-  // 설정: Docs 주소 기본값은 비우고, /docs 라우트 스위치는 없앤다
+  // 설정: Docs 주소 기본값은 공식 설명서(https://meerkit.dev/)로 두고, /docs 라우트 스위치는 없앤다
   const cfg = join(src, "meerkit", "config.ts");
   let c = await readFile(cfg, "utf8");
   c = c
-    .replace(/  \/\/ 웰컴 페이지 Docs 버튼이 여는 주소[^\n]*\n  docsUrl: [^\n]*\n/, "  // 웰컴 페이지 Docs 버튼이 여는 주소 (사용 설명서 사이트). 비워 두면 버튼을 보여 주지 않는다.\n  docsUrl: process.env.NEXT_PUBLIC_DOCS_URL ?? \"\",\n")
+    .replace(/  \/\/ 웰컴 페이지 Docs 버튼이 여는 주소[^\n]*\n  docsUrl: [^\n]*\n/, "  // 웰컴 페이지 Docs 버튼이 여는 주소. 기본은 Meerkit 공식 설명서. 빈 문자열로 바꾸면 버튼을 보여 주지 않는다.\n  docsUrl: process.env.NEXT_PUBLIC_DOCS_URL ?? \"https://meerkit.dev/\",\n")
     .replace(/  \/\/ 이 앱에서 \/docs 라우트를[^\n]*\n  showDocsPage: [^\n]*\n/, "");
   await writeFile(cfg, c);
 

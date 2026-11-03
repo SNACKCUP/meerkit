@@ -6,8 +6,8 @@ const githubUrl =
 
 export const meerkitConfig = {
   apiBaseUrl: process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api",
-  // 웰컴 페이지 Docs 버튼이 여는 주소. 문서를 따로 배포했다면 그 주소를 넣고, 없으면 같은 앱의 /docs를 쓴다.
-  docsUrl: process.env.NEXT_PUBLIC_DOCS_URL ?? "/docs",
+  // 웰컴 페이지 Docs 버튼이 여는 주소. 기본은 Meerkit 공식 설명서(https://meerkit.dev/). 문서를 따로 배포했다면 그 주소를 넣는다.
+  docsUrl: process.env.NEXT_PUBLIC_DOCS_URL ?? "https://meerkit.dev/",
   githubUrl,
   // 이 앱에서 /docs 라우트를 열어 둘지. 운영에서는 false로 닫는 것을 권장한다.
   showDocsPage: process.env.NEXT_PUBLIC_SHOW_DOCS_PAGE !== "false",
