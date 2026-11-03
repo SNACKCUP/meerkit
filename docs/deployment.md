@@ -112,6 +112,7 @@ Settings → Environments → **New environment** `production`:
 
 - Porkbun 기본 기록(ALIAS·`*` → `pixie.porkbun.com`)은 지웁니다. 메일 기록(DKIM·SPF·DMARC)은 그대로 둡니다
 - HTTPS 인증서는 Vercel·Render가 자동으로 붙입니다 (`.dev`는 HTTPS만 열림)
+- **`api` 도메인은 첫 배포 전에 연결합니다.** Render의 Custom Domains에 `api.meerkit.dev`를 추가하고 위 CNAME을 넣은 뒤 연결(인증서 발급)을 확인합니다. 배포 워크플로의 헬스 확인이 이 주소(`PROD_API_URL`)를 부르기 때문입니다 (아래 "자주 막히는 곳")
 
 ### 6. 첫 관리자 계정
 
@@ -128,6 +129,14 @@ Environment `production`에 Secret `SEED_ADMIN_PASSWORD`, Variable `SEED_ADMIN_U
 - [ ] 프로필 이미지 주소가 `https://<ref>.supabase.co/storage/...`
 - [ ] 관리자 멤버 관리 화면
 - [ ] Render 로그가 JSON이고 `request_id`가 있으며, 비밀번호·인증번호·키가 없음
+
+## 자주 막히는 곳
+
+| 증상 | 원인 | 해결 |
+| --- | --- | --- |
+| 첫 배포가 **Wait for new version** 단계에서 SSL 오류로 실패 | 이 단계가 `PROD_API_URL`의 `/health`를 부르는데, `api` 도메인이 아직 연결되지 않아 인증서가 없음 | Render에 `api` 도메인을 추가하고 DNS CNAME을 넣어 HTTPS가 열린 뒤 워크플로를 다시 실행 |
+| Vercel에서 도메인이 **"다른 계정에 연결됨"** 으로 막힘 | 도메인이 다른 Vercel 계정에 연결된 것으로 인식되어 소유 확인이 필요함 | Vercel이 보여 주는 `_vercel` TXT 기록 **두 개**를 Porkbun DNS에 추가하고 확인 |
+| 새 배포가 시작되지 않고 줄을 서 있음 | 이전 배포 실행이 `production` 승인 대기로 남아 있음. 배포는 한 번에 하나씩 돌도록 묶여 있고 실행 중인 것을 자동 취소하지 않음 | Actions에서 오래된 대기 실행은 **Cancel workflow**, 최신 한 건만 승인 |
 
 ## 되돌리기
 
