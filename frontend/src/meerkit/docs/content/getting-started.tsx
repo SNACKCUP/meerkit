@@ -146,7 +146,7 @@ export function Installation() {
         rows={[
           [<Ic key="1">NEXT_PUBLIC_API_BASE_URL</Ic>, "/api", "브라우저가 호출할 API 경로. next.config의 프록시가 백엔드로 전달합니다."],
           [<Ic key="2">API_PROXY_TARGET</Ic>, "http://localhost:8000", "프록시가 전달할 백엔드 주소."],
-          [<Ic key="3">NEXT_PUBLIC_DOCS_URL</Ic>, "/docs", "웰컴 페이지 Docs 링크(새 창). 문서를 따로 배포했다면 그 주소."],
+          [<Ic key="3">NEXT_PUBLIC_DOCS_URL</Ic>, "https://meerkit.dev/", "웰컴 페이지 Docs 링크(새 창). 문서를 따로 배포했다면 그 주소."],
           [<Ic key="4">NEXT_PUBLIC_GITHUB_URL</Ic>, "저장소 주소", "문서 상단 GitHub 버튼."],
           [<Ic key="5">NEXT_PUBLIC_SHOW_DOCS_PAGE</Ic>, "true", "이 문서(/docs) 라우트를 열지 여부. 운영에서는 false로 닫는 것을 권장합니다."],
         ]}
@@ -467,7 +467,7 @@ export function Deployment() {
           [<Ic key="1">API_PROXY_TARGET</Ic>, "운영 백엔드 주소", "/api 요청을 전달할 곳. 내부 주소를 쓸 수 있습니다."],
           [<Ic key="2">NEXT_PUBLIC_API_BASE_URL</Ic>, "/api", "바꾸지 않는 것을 권장합니다. 같은 도메인이라 쿠키와 CORS가 단순해집니다."],
           [<Ic key="3">NEXT_PUBLIC_SHOW_DOCS_PAGE</Ic>, "false", "내 서비스에서 /docs 라우트를 닫습니다."],
-          [<Ic key="4">NEXT_PUBLIC_DOCS_URL</Ic>, "내 문서 주소", "웰컴 페이지의 Docs 버튼이 열 주소. 쓰지 않는다면 버튼을 지우세요."],
+          [<Ic key="4">NEXT_PUBLIC_DOCS_URL</Ic>, "https://meerkit.dev/", "웰컴 페이지의 Docs 버튼이 열 주소. 내 문서를 따로 배포했다면 그 주소를 넣고, 쓰지 않는다면 버튼을 지우세요."],
         ]}
       />
       <Callout tone="warn">

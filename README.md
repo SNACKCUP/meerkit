@@ -169,7 +169,7 @@ meerkit/
 | `LLM_TEMPERATURE`, `LLM_TIMEOUT_SECONDS`, `LLM_MAX_RETRIES`, `LLM_OUTPUT_RETRIES`, `LLM_MAX_INPUT_CHARS` | backend | LLM 호출 설정 (`app/llm/config.py`) |
 | `OPENAI_API_KEY` | backend | OpenAI 키 |
 | `NEXT_PUBLIC_API_BASE_URL` | frontend | 브라우저가 호출할 API 기본 경로 (기본값 `/api`) |
-| `NEXT_PUBLIC_DOCS_URL` | frontend | 초기 화면의 "사용 설명서" 링크 |
+| `NEXT_PUBLIC_DOCS_URL` | frontend | 초기 화면의 "사용 설명서" 링크 (기본 https://meerkit.dev/) |
 | `API_PROXY_TARGET` | frontend | `/api` 프록시가 전달할 백엔드 주소 (기본값 `http://localhost:8000`) |
 
 ### 운영 DB(호스팅 Supabase)로 옮길 때

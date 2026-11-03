@@ -53,7 +53,7 @@ npx @snackcup/meerkit setup
 `template/`은 `scripts/sync-template.mjs`가 저장소에서 만듭니다 (git이 추적하는 파일만 복사). 직접 고치지 마세요. 배포 직전(`npm pack`, `npm publish`)에 자동으로 다시 만들어집니다.
 
 - 빼는 것: 팀 문서(`docs/`), `CLAUDE.md`, `.claude/`, `.env`, `node_modules`, 예시 기능의 테스트 등
-- 사용 설명서(프론트의 `/docs` 화면과 `src/meerkit/docs`)는 통째로 뺍니다. 설명서는 별도 사이트로 배포하고, 앱에는 웰컴 페이지만 남습니다. 설명서 주소를 `NEXT_PUBLIC_DOCS_URL`에 넣으면 웰컴 페이지에 Docs 버튼이 나타납니다.
+- 사용 설명서(프론트의 `/docs` 화면과 `src/meerkit/docs`)는 통째로 뺍니다. 설명서는 별도 사이트로 배포하고, 앱에는 웰컴 페이지만 남습니다. 웰컴 페이지의 Docs 버튼은 공식 설명서(https://meerkit.dev/)로 연결되고, 다른 주소를 쓰려면 `NEXT_PUBLIC_DOCS_URL`에 넣으세요.
 - 템플릿에 서비스 코드 흔적(`maemusae`, `gsap` 등)이나 비밀 파일이 있으면 스크립트가 실패합니다.
 
 ```bash
