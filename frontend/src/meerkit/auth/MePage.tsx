@@ -13,7 +13,13 @@ import { RoleBadges } from "./components/RoleBadges";
 import { displayName } from "./components/UserAvatar";
 import { RequireAuth } from "./guards/RequireAuth";
 import { useAuth } from "./hooks";
-import { MeAvatarField, MeNicknameForm, MePasswordForm, MeProfileForm, MeWithdrawForm } from "./MeSections";
+import {
+  MeAvatarField,
+  MeNicknameForm,
+  MePasswordForm,
+  MeProfileForm,
+  MeWithdrawForm,
+} from "./MeSections";
 
 export interface MePageTab {
   value: string;
@@ -34,7 +40,12 @@ export interface MePageProps {
 
 const date = (iso: string) => iso.slice(0, 10);
 
-function MeContent({ title = "내 정보", extraTabs = [], embedded = false, apiKey = true }: MePageProps) {
+function MeContent({
+  title = "내 정보",
+  extraTabs = [],
+  embedded = false,
+  apiKey = true,
+}: MePageProps) {
   const { user } = useAuth();
   const router = useRouter();
   if (!user) return null;
@@ -50,21 +61,31 @@ function MeContent({ title = "내 정보", extraTabs = [], embedded = false, api
           className="rounded-full"
           aria-label="뒤로 가기"
           // 이전 화면이 없으면(주소를 직접 열었으면) 처음 화면으로 간다
-          onClick={() => (window.history.length > 1 ? router.back() : router.push(meerkitConfig.routes.home))}
+          onClick={() =>
+            window.history.length > 1
+              ? router.back()
+              : router.push(meerkitConfig.routes.home)
+          }
         >
           <ArrowLeft />
         </Button>
         <h1 className="text-3xl font-semibold tracking-tight">{title}</h1>
       </div>
       <Card className="mb-4">
-        <CardContent className="flex flex-col items-center gap-5 sm:flex-row sm:gap-7">
+        <CardContent className="flex flex-col gap-5 sm:flex-row sm:gap-7">
           <MeAvatarField showHint={false} />
           <div className="min-w-0 flex-1 text-center sm:text-left">
-            <p className="truncate text-xl font-semibold">{displayName(user)}</p>
-            <p className="truncate text-sm text-muted-foreground">{user.email}</p>
-            <div className="mt-2 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+            <p className="truncate text-xl font-semibold">
+              {displayName(user)}
+            </p>
+            <p className="truncate text-sm text-muted-foreground">
+              {user.email}
+            </p>
+            <div className="mt-2.5 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
               <RoleBadges roles={user.roles} />
-              <span className="text-xs text-muted-foreground">가입일 {date(user.created_at)}</span>
+              <span className="text-xs text-muted-foreground">
+                가입일 {date(user.created_at)}
+              </span>
             </div>
           </div>
         </CardContent>
@@ -75,7 +96,11 @@ function MeContent({ title = "내 정보", extraTabs = [], embedded = false, api
 
       <Tabs defaultValue={extraTabs[0]?.value ?? "profile"}>
         <TabsList>
-          {extraTabs.map((x) => <TabsTrigger key={x.value} value={x.value}>{x.label}</TabsTrigger>)}
+          {extraTabs.map((x) => (
+            <TabsTrigger key={x.value} value={x.value}>
+              {x.label}
+            </TabsTrigger>
+          ))}
           <TabsTrigger value="profile">프로필 수정</TabsTrigger>
           <TabsTrigger value="password">비밀번호 변경</TabsTrigger>
           {apiKey && <TabsTrigger value="apikey">API 키</TabsTrigger>}
@@ -83,7 +108,11 @@ function MeContent({ title = "내 정보", extraTabs = [], embedded = false, api
         </TabsList>
         <Card className="mt-3">
           <CardContent>
-            {extraTabs.map((x) => <TabsContent key={x.value} value={x.value} className="mk-swap">{x.content}</TabsContent>)}
+            {extraTabs.map((x) => (
+              <TabsContent key={x.value} value={x.value} className="mk-swap">
+                {x.content}
+              </TabsContent>
+            ))}
             <TabsContent value="profile" className="mk-swap">
               <MeProfileForm />
             </TabsContent>
