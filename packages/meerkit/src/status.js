@@ -4,6 +4,7 @@ import { join } from "node:path";
 
 import { belongsTo, isWin, listenersOf } from "./proc.js";
 import { activePorts } from "./ports.js";
+import { migrationState } from "./migrations.js";
 import { findProjectRoot } from "./setup.js";
 import { missingSetup } from "./start.js";
 import { bold, cyan, dim, fail, info, ok, warn } from "./ui.js";
@@ -26,16 +27,6 @@ export function dbContainer(root) {
   if (r.status !== 0) return null;
   const [state, health] = r.stdout.trim().split("|");
   return { state, health };
-}
-
-/** alembic이 최신인지: "head" | "behind" | "empty" | "unknown" */
-export function migrationState(root) {
-  const r = spawnSync("uv", ["run", "alembic", "current"], { cwd: join(root, "backend"), encoding: "utf8", timeout: 30_000 });
-  if (r.status !== 0) return "unknown";
-  const text = `${r.stdout}\n${r.stderr}`;
-  if (/\(head\)/.test(text)) return "head";
-  if (/^[0-9a-f]{6,}/m.test(r.stdout)) return "behind";
-  return "empty";
 }
 
 function portLine(root, port, label) {

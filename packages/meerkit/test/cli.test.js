@@ -468,3 +468,13 @@ test("compose port 출력에서 호스트 포트를 읽는다", () => {
   assert.equal(parseMappedPort(""), null);
   assert.equal(parseMappedPort("invalid IP:0"), null); // 열리지 않은 컨테이너
 });
+
+import { migrationWarning } from "../src/migrations.js";
+
+test("마이그레이션 경고: 뒤처졌거나 테이블이 없을 때만 알려 준다", () => {
+  assert.match(migrationWarning("behind"), /db migrate/);
+  assert.match(migrationWarning("behind"), /git pull/);
+  assert.match(migrationWarning("empty"), /테이블/);
+  assert.equal(migrationWarning("head"), null);
+  assert.equal(migrationWarning("unknown"), null);
+});

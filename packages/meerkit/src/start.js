@@ -3,6 +3,7 @@ import { join } from "node:path";
 
 import { dbReachable } from "./db.js";
 import { checkDbPort } from "./dbport.js";
+import { migrationState, migrationWarning } from "./migrations.js";
 import { checkPorts, printChecks, runToolChecks } from "./checks.js";
 import { parsePorts } from "./ports.js";
 import { runLogged } from "./run.js";
@@ -78,6 +79,8 @@ export async function runStart(args) {
       return 1;
     }
     ok("데이터베이스 실행 중");
+    const hint = migrationWarning(migrationState(root));
+    if (hint) warn(hint);
   } else {
     // --no-db: DB를 켜 주지 않으므로, 응답하지 않으면 API가 실패한다는 것을 먼저 알려 준다
     const db = await dbReachable(root);
