@@ -59,8 +59,8 @@ export function ProfileImageField({ user, onUpload, onRemove, accept = DEFAULT_A
   const shown = { ...user, avatar_url: preview ?? user.avatar_url };
 
   return (
-    <div className="grid justify-items-start gap-2">
-      <div className="flex items-center gap-4">
+    <div className="grid justify-items-center gap-2">
+      <div className="grid justify-items-center gap-2.5">
         <button
           type="button"
           aria-label="프로필 이미지 변경"
@@ -73,20 +73,20 @@ export function ProfileImageField({ user, onUpload, onRemove, accept = DEFAULT_A
             <Camera className="size-5" aria-hidden />
           </span>
         </button>
-        <div className="grid gap-1.5">
-          <Button type="button" variant="outline" size="sm" data-slot="avatar-change" disabled={disabled || busy} onClick={() => inputRef.current?.click()}>
+        <div className="flex items-center gap-1">
+          <Button type="button" variant="outline" size="sm" className="h-7 rounded-lg px-2.5 text-xs" data-slot="avatar-change" disabled={disabled || busy} onClick={() => inputRef.current?.click()}>
             {busy ? "올리는 중…" : "이미지 변경"}
           </Button>
           {onRemove && user.avatar_url && (
-            <Button type="button" variant="ghost" size="sm" data-slot="avatar-remove" disabled={disabled || busy} onClick={() => onRemove()}>
+            <Button type="button" variant="ghost" size="sm" className="h-7 rounded-lg px-2 text-xs" data-slot="avatar-remove" disabled={disabled || busy} onClick={() => onRemove()}>
               <Trash2 /> 삭제
             </Button>
           )}
         </div>
       </div>
       <input ref={inputRef} type="file" accept={accept.join(",")} className="sr-only" tabIndex={-1} onChange={(e) => pick(e.target.files?.[0])} />
-      {showHint && <p className="text-xs text-muted-foreground">JPG, PNG, WEBP · {maxSizeMB}MB 이하</p>}
-      {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
+      {showHint && <p className="text-center text-xs text-muted-foreground">JPG, PNG, WEBP · {maxSizeMB}MB 이하</p>}
+      {error && <p role="alert" className="whitespace-pre-line text-center text-xs text-destructive">{error.replace(/\.\s+/g, ".\n")}</p>}
     </div>
   );
 }
