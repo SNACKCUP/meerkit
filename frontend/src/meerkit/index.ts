@@ -25,6 +25,7 @@ export { api } from "./api/client";
 export { ROLES, ADMIN_ROLE, hasRole, isAdminUser } from "./roles";
 export type { RoleName } from "./roles";
 export type { Role, User } from "./types";
+export { AdminKit } from "./admin/kit/AdminKit";
 export { MemberAiUsage } from "./admin/components/MemberAiUsage";
 export { MemberAiUsageHistory } from "./admin/components/MemberAiUsageHistory";
 export type { AiUsage, UsagePeriod, UsagePoint } from "./admin/usage-status";

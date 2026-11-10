@@ -91,6 +91,12 @@ export const docGroups: DocGroup[] = [
     ],
   },
   {
+    label: "Admin Template",
+    items: [
+      { slug: "admin-template", title: "Admin Template", description: "회원·감사 로그·공통 코드 등 10개 탭을 담은 관리자 화면 템플릿입니다. 프론트 UI만 제공하며 데이터는 목 데이터입니다.", audience: "admin" },
+    ],
+  },
+  {
     label: "AI Components",
     items: [
       { slug: "ai-prompt-input", title: "AI Prompt Input", description: "AI에게 질문하거나 코멘트를 남기는 입력 폼. 글 입력, 파일 첨부, 에이전트 선택, 보내기·중지를 한 덩어리로 묶었습니다." },
