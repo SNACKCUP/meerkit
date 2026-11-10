@@ -478,3 +478,61 @@ test("마이그레이션 경고: 뒤처졌거나 테이블이 없을 때만 알�
   assert.equal(migrationWarning("head"), null);
   assert.equal(migrationWarning("unknown"), null);
 });
+
+test("db-port: --db-port 옵션 읽기와 검사", async () => {
+  const { parseDbPort } = await import("../src/ports.js");
+  assert.deepEqual(parseDbPort([]), { value: null });
+  assert.deepEqual(parseDbPort(["--db-port", "5433"]), { value: 5433 });
+  assert.match(parseDbPort(["--db-port", "abc"]).error, /--db-port/);
+  assert.match(parseDbPort(["--db-port", "80"]).error, /1024/);
+  assert.match(parseDbPort(["--db-port"]).error, /없음/);
+  assert.match(parseDbPort(["--db-port", "3000"], { web: 3000, api: 8000 }).error, /같을 수 없/);
+  // --port 와 이름이 겹치지 않는다
+  const { parsePorts } = await import("../src/ports.js");
+  assert.deepEqual(parsePorts(["--db-port", "5433"]).ports, { web: 3000, api: 8000 });
+});
+
+test("db-port: compose DB 주소만 포트를 읽고 바꾼다", async () => {
+  const { composePortOf, composeDbPort, dbComposeEnv, setDbPort } = await import("../src/dbport.js");
+  assert.equal(composePortOf("postgresql+psycopg://starter:pw@localhost:5433/starter"), 5433);
+  assert.equal(composePortOf("postgresql+psycopg://starter:pw@localhost/starter"), 5432);
+  // Supabase 로컬이나 원격 DB는 compose DB가 아니다
+  assert.equal(composePortOf("postgresql+psycopg://postgres:postgres@127.0.0.1:54322/postgres"), null);
+  assert.equal(composePortOf("postgresql+psycopg://starter:pw@db.example.com:5432/starter"), null);
+  assert.equal(composePortOf(undefined), null);
+
+  const dir = await tmp();
+  await mkdir(join(dir, "backend"), { recursive: true });
+  const envFile = join(dir, "backend", ".env");
+  const original = [
+    "DATABASE_URL=postgresql+psycopg://starter:pw@localhost:5432/starter",
+    "# DATABASE_URL=postgresql+psycopg://postgres:postgres@127.0.0.1:54322/postgres  # 대체용",
+    "TEST_DATABASE_URL=postgresql+psycopg://starter:pw@localhost:5432/meerkit_test  # 테스트용",
+    "OTHER=postgresql+psycopg://starter:pw@localhost:5432/x",
+    "",
+  ].join("\n");
+  await writeFile(envFile, original);
+  assert.deepEqual(await dbComposeEnv(dir), { DB_PORT: "5432" });
+
+  assert.deepEqual(await setDbPort(dir, 5433), ["DATABASE_URL", "TEST_DATABASE_URL"]);
+  const after = await readFile(envFile, "utf8");
+  assert.match(after, /^DATABASE_URL=postgresql\+psycopg:\/\/starter:pw@localhost:5433\/starter$/m);
+  assert.match(after, /^TEST_DATABASE_URL=.*@localhost:5433\/meerkit_test {2}# 테스트용$/m);
+  // 주석 처리된 Supabase 줄과 다른 키는 그대로
+  assert.match(after, /^# DATABASE_URL=.*54322\/postgres {2}# 대체용$/m);
+  assert.match(after, /^OTHER=.*:5432\/x$/m);
+  assert.equal(await composeDbPort(dir), 5433);
+  assert.deepEqual(await dbComposeEnv(dir), { DB_PORT: "5433" });
+  // 같은 값으로 다시 바꾸면 바뀐 것이 없다 (다시 실행해도 안전)
+  assert.deepEqual(await setDbPort(dir, 5433), []);
+
+  // Supabase 모드(주석 아님)의 주소는 건드리지 않고 compose 환경 변수도 만들지 않는다
+  await writeFile(envFile, "DATABASE_URL=postgresql+psycopg://postgres:postgres@127.0.0.1:54322/postgres\n");
+  assert.deepEqual(await setDbPort(dir, 5433), []);
+  assert.deepEqual(await dbComposeEnv(dir), {});
+});
+
+test("db-port: docker-compose.yml의 DB 호스트 포트는 DB_PORT로 바꿀 수 있다", async () => {
+  const compose = await readFile(new URL("../../../docker-compose.yml", import.meta.url), "utf8");
+  assert.match(compose, /"\$\{DB_PORT:-5432\}:5432"/);
+});

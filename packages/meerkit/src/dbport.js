@@ -1,9 +1,58 @@
 import { spawnSync } from "node:child_process";
+import { readFile, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 
 import { databaseTarget } from "./db.js";
 import { listenersOf } from "./proc.js";
 
 const isWin = process.platform === "win32";
+
+export const DEFAULT_DB_PORT = 5432;
+
+/** DATABASE_URL 값에서 compose DB(로컬, starter 계정)의 포트를 꺼낸다. 다른 DB(Supabase 로컬, 원격)면 null. */
+export function composePortOf(value) {
+  try {
+    const u = new URL(String(value ?? "").split("#")[0].trim().replace(/^postgresql\+psycopg:/, "postgresql:"));
+    if (u.username !== "starter" || !["localhost", "127.0.0.1", "::1"].includes(u.hostname)) return null;
+    return Number(u.port || DEFAULT_DB_PORT);
+  } catch {
+    return null;
+  }
+}
+
+/** backend/.env 가 가리키는 compose DB 포트. 이 프로젝트의 compose DB를 쓰지 않으면 null. */
+export async function composeDbPort(root) {
+  try {
+    const text = await readFile(join(root, "backend", ".env"), "utf8");
+    const m = text.match(/^DATABASE_URL=(.+)$/m);
+    return composePortOf(process.env.DATABASE_URL || m?.[1]);
+  } catch {
+    return null;
+  }
+}
+
+/** docker compose에 넘길 환경 변수. compose의 ports가 ${DB_PORT}를 읽는다. */
+export async function dbComposeEnv(root) {
+  const port = await composeDbPort(root);
+  return port ? { DB_PORT: String(port) } : {};
+}
+
+/** backend/.env 의 DATABASE_URL·TEST_DATABASE_URL(로컬, starter 계정) 포트를 바꾼다. 바뀐 키 목록을 돌려준다. 주석 처리된 줄과 다른 DB 주소는 건드리지 않는다. */
+export async function setDbPort(root, port) {
+  const file = join(root, "backend", ".env");
+  let text = await readFile(file, "utf8");
+  const changed = [];
+  for (const key of ["DATABASE_URL", "TEST_DATABASE_URL"]) {
+    const re = new RegExp(`^(${key}=[^#\\r\\n]*?//starter:[^#\\r\\n]*?@(?:localhost|127\\.0\\.0\\.1)):\\d+`, "m");
+    const next = text.replace(re, `$1:${port}`);
+    if (next !== text) {
+      text = next;
+      changed.push(key);
+    }
+  }
+  if (changed.length) await writeFile(file, text);
+  return changed;
+}
 
 /** `docker compose port db 5432` 출력("0.0.0.0:5432" 등)에서 호스트 포트를 꺼낸다. 열려 있지 않으면 null. */
 export function parseMappedPort(stdout) {
@@ -53,7 +102,7 @@ export async function checkDbPort(root) {
       holders.length
         ? `그 DB가 필요 없다면 멈추기: docker stop ${holders[0]}  (데이터가 필요한 DB라면 멈추지 마세요)`
         : `${want} 포트를 쓰는 프로그램을 끄세요. 확인: lsof -nP -iTCP:${want} -sTCP:LISTEN  (Windows: netstat -ano | findstr :${want})`,
-      `또는 이 프로젝트의 포트를 바꾸기: docker-compose.yml의 ports와 backend/.env의 DATABASE_URL·TEST_DATABASE_URL 포트를 같은 값(예: 5433)으로`,
+      `또는 이 프로젝트의 DB 포트를 바꾸기: npx @snackcup/meerkit setup --db-port 5433 (start도 같음. backend/.env의 DATABASE_URL·TEST_DATABASE_URL 포트가 함께 바뀝니다)`,
       "다시 실행: 이미 끝난 단계는 건너뜁니다",
     ],
   };

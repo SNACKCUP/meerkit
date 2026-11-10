@@ -8,7 +8,8 @@ services:
       POSTGRES_PASSWORD: starter
       POSTGRES_DB: starter
     ports:
-      - "5432:5432"
+      # 호스트 포트는 DB_PORT로 바꿀 수 있다(기본 5432). meerkit CLI는 backend/.env의 DATABASE_URL 포트를 DB_PORT로 넘겨 주고, 직접 켤 때는 `DB_PORT=5433 docker compose up -d db`.
+      - "${DB_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     # `docker compose up --wait`가 DB가 진짜 준비될 때까지 기다리게 한다. 처음 만들 때 DB는 초기화 중에 한 번 재시작하므로,

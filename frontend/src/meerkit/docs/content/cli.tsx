@@ -105,15 +105,17 @@ export function CliSetup() {
         rows={[
           ["--port <번호>", "프론트엔드 포트 (기본 3000)"],
           ["--api-port <번호>", "백엔드 포트 (기본 8000)"],
+          ["--db-port <번호>", "DB 컨테이너가 여는 포트 (기본 5432). backend/.env의 DATABASE_URL·TEST_DATABASE_URL 포트도 함께 바뀝니다"],
           ["--no-start", "서버는 켜지 않고 세팅만 합니다"],
           ["--dir <폴더>", "다른 폴더의 프로젝트를 대상으로 합니다"],
         ]}
       />
       <H3>예시</H3>
-      <CodeBlock title="bash" code={`# 서버는 켜지 않고 세팅만\n${CMD} setup --no-start\n\n# 3000, 8000 포트를 다른 프로그램이 쓰고 있을 때\n${CMD} setup --port 3100 --api-port 8100`} />
+      <CodeBlock title="bash" code={`# 서버는 켜지 않고 세팅만\n${CMD} setup --no-start\n\n# 3000, 8000 포트를 다른 프로그램이 쓰고 있을 때\n${CMD} setup --port 3100 --api-port 8100\n\n# 5432 포트를 다른 프로그램이 쓰고 있을 때 (DB 포트 바꾸기)\n${CMD} setup --db-port 5433`} />
       <UL>
         <li>포트는 1024~65535 사이이고 두 포트가 같으면 안 됩니다. 브라우저가 막는 포트(예: 6000)는 피하세요.</li>
-        <li><Ic>.env</Ic> 파일은 고치지 않고, 서로를 가리키는 주소(CORS, API 프록시)가 이번 실행에 맞춰 함께 바뀝니다.</li>
+        <li><Ic>--port</Ic>, <Ic>--api-port</Ic>는 <Ic>.env</Ic> 파일을 고치지 않고, 서로를 가리키는 주소(CORS, API 프록시)가 이번 실행에 맞춰 함께 바뀝니다.</li>
+        <li><Ic>--db-port</Ic>는 <Ic>backend/.env</Ic>의 <Ic>DATABASE_URL</Ic>, <Ic>TEST_DATABASE_URL</Ic> 포트를 고칩니다(로컬 DB 주소만). 한 번 정하면 다음부터는 옵션 없이 <Ic>setup</Ic>, <Ic>start</Ic>가 그 포트를 씁니다. 직접 켤 때는 <Ic>DB_PORT=5433 docker compose up -d db</Ic>입니다.</li>
         <li>전체 로그는 프로젝트 폴더의 <Ic>meerkit-setup.log</Ic>에 남습니다. 비밀 값은 기록하지 않습니다.</li>
       </UL>
       <Callout tone="warn">
@@ -127,7 +129,7 @@ export function CliSetup() {
         rows={[
           ["Docker Desktop이 켜져 있는데 \"응답이 없음\"", "디스크가 가득 차면 Docker가 멈춥니다. 공간을 확보하고 Docker Desktop을 재시작하세요."],
           ["Docker Desktop \"실행 중이 아님\"", "Docker Desktop을 실행하고 완전히 켜질 때까지 기다린 뒤 다시 실행하세요."],
-          ["\"이미 사용 중\" 포트 오류", "안내에 나온 프로그램을 종료하거나 --port, --api-port로 다른 포트를 쓰세요."],
+          ["\"이미 사용 중\" 포트 오류", "안내에 나온 프로그램을 종료하거나 --port, --api-port, --db-port(DB 5432)로 다른 포트를 쓰세요."],
           ["한 단계에서 멈춤", "화면에 나온 원인과 해결 방법을 따른 뒤 같은 setup 명령을 다시 실행하면 그 단계부터 이어집니다."],
           ["npm install 중 ENOSPC", "디스크 공간 부족입니다. 공간을 확보한 뒤 다시 실행하세요."],
         ]}
@@ -148,6 +150,7 @@ export function CliServer() {
         rows={[
           ["--port <번호>", "프론트엔드 포트 (기본 3000)"],
           ["--api-port <번호>", "백엔드 포트 (기본 8000)"],
+          ["--db-port <번호>", "DB 컨테이너가 여는 포트 (기본 5432). backend/.env의 DATABASE_URL·TEST_DATABASE_URL 포트도 함께 바뀝니다"],
           ["--no-db", "DB 컨테이너는 건드리지 않습니다"],
           ["--dir <폴더>", "다른 폴더의 프로젝트를 대상으로 합니다"],
         ]}
@@ -247,7 +250,7 @@ export function CliDatabase() {
       <Callout tone="warn">로컬 DB의 데이터가 모두 지워집니다. 되돌릴 수 없습니다.</Callout>
       <OL>
         <li>실수를 막기 위해 프로젝트 폴더 이름을 입력해야 합니다.</li>
-        <li><Ic>localhost:5432</Ic>가 아닌 DB(원격 DB, 다른 포트)에서는 실행하지 않고 멈춥니다.</li>
+        <li>이 프로젝트의 docker-compose DB(<Ic>localhost</Ic>, <Ic>starter</Ic> 계정)가 아닌 DB(원격 DB, Supabase 로컬)에서는 실행하지 않고 멈춥니다. DB 포트는 바꿨어도 됩니다.</li>
         <li>지운 뒤 DB를 다시 켜고 마이그레이션과 관리자 계정 생성까지 진행합니다.</li>
       </OL>
       <CodeBlock title="bash" code={`${CMD} db reset\n${CMD} db reset --yes   # 확인 입력 생략 (자동화용)`} />
