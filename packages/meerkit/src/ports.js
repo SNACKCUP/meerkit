@@ -20,6 +20,17 @@ export function parsePorts(args) {
   return { ports };
 }
 
+/** --db-port(DB 컨테이너가 호스트에 여는 포트)를 읽는다. 없으면 { value: null }. 문제가 있으면 { error } */
+export function parseDbPort(args, ports) {
+  const i = args.indexOf("--db-port");
+  if (i < 0) return { value: null };
+  const raw = args[i + 1];
+  const n = Number(raw);
+  if (!raw || !Number.isInteger(n) || n < 1024 || n > 65535) return { error: `--db-port 값이 올바르지 않습니다: ${raw ?? "(없음)"}  (1024~65535 사이 숫자)` };
+  if (ports && (n === ports.web || n === ports.api)) return { error: "DB 포트는 프론트엔드·백엔드 포트와 같을 수 없습니다." };
+  return { value: n };
+}
+
 /** 지금 켜져 있는 서버가 쓰는 포트. start가 기록해 둔 값이 있으면 그것, 없으면 기본값. */
 export async function activePorts(root) {
   const rec = await readPidFile(root);

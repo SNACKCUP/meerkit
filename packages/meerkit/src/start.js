@@ -2,10 +2,10 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 
 import { dbReachable } from "./db.js";
-import { checkDbPort } from "./dbport.js";
+import { checkDbPort, dbComposeEnv, setDbPort } from "./dbport.js";
 import { migrationState, migrationWarning } from "./migrations.js";
 import { checkPorts, printChecks, runToolChecks } from "./checks.js";
-import { parsePorts } from "./ports.js";
+import { parseDbPort, parsePorts } from "./ports.js";
 import { runLogged } from "./run.js";
 import { findProjectRoot, printFailure, startServers } from "./setup.js";
 import { bold, cyan, fail, info, ok, warn } from "./ui.js";
@@ -44,6 +44,20 @@ export async function runStart(args) {
     return 1;
   }
 
+  const db = parseDbPort(args, chosen);
+  if (db.error) {
+    fail(db.error);
+    return 1;
+  }
+  if (db.value) {
+    const changed = await setDbPort(root, db.value);
+    if (!changed.length) {
+      fail("--db-port를 적용하지 못했습니다: backend/.env에서 로컬 DB 주소(starter 계정, localhost)를 찾지 못했습니다.");
+      return 1;
+    }
+    info(`DB 포트를 ${db.value}로 바꿨습니다 (backend/.env의 ${changed.join(", ")}). 다음부터는 옵션 없이 start 하면 됩니다.`);
+  }
+
   info(bold("서버를 켤 준비를 합니다."));
   const tools = await runToolChecks();
   const ports = await checkPorts([
@@ -56,12 +70,12 @@ export async function runStart(args) {
   if (!args.includes("--no-db")) {
     const logPath = join(root, LOG_NAME);
     info("\n데이터베이스를 확인합니다 (docker compose).");
-    const r = await runLogged("docker", ["compose", "up", "-d", "--wait", "db"], { cwd: root, logFile: logPath, label: "start: docker compose up" });
+    const r = await runLogged("docker", ["compose", "up", "-d", "--wait", "db"], { cwd: root, logFile: logPath, label: "start: docker compose up", env: await dbComposeEnv(root) });
     if (r.code !== 0) {
       printFailure({
         title: "데이터베이스 실행",
         cause: r.tail,
-        hint: "Docker Desktop이 실행 중인지, 5432 포트를 다른 프로그램이 쓰고 있지 않은지 확인하세요.",
+        hint: "Docker Desktop이 실행 중인지, 5432 포트를 다른 프로그램이 쓰고 있지 않은지 확인하세요. 쓰고 있다면 `--db-port 5433`처럼 다른 포트로 다시 실행하세요.",
         logPath,
         retry: "start",
       });

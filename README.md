@@ -54,6 +54,7 @@ npx @snackcup/meerkit setup
 |---|---|
 | 서버는 켜지 않고 세팅만 | `npx @snackcup/meerkit setup --no-start` |
 | 포트 바꾸기 | `npx @snackcup/meerkit setup --port 3100 --api-port 8100` (1024~65535, 브라우저가 막는 6000 같은 포트는 피하세요) |
+| DB 포트 바꾸기 (5432를 다른 프로그램이 쓸 때) | `npx @snackcup/meerkit setup --db-port 5433` — `backend/.env`의 `DATABASE_URL`·`TEST_DATABASE_URL` 포트도 함께 바뀝니다. 한 번 정하면 `start`는 옵션 없이 씁니다 |
 | 다음부터 서버만 켜기 | `npx @snackcup/meerkit start` |
 | 상태 / 종료 / 브라우저 열기 | `status` / `stop` / `open` |
 | 전체 명령 | `npx @snackcup/meerkit --help` |

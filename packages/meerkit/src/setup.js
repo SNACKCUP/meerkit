@@ -3,10 +3,10 @@ import { spawn } from "node:child_process";
 import { join, resolve } from "node:path";
 
 import { checkPorts, printChecks, runToolChecks } from "./checks.js";
-import { checkDbPort } from "./dbport.js";
+import { checkDbPort, dbComposeEnv, setDbPort } from "./dbport.js";
 import { ensureEnvFiles } from "./env.js";
 import { clearPidFile, writePidFile } from "./proc.js";
-import { DEFAULT_PORTS, parsePorts } from "./ports.js";
+import { DEFAULT_PORTS, parseDbPort, parsePorts } from "./ports.js";
 import { runLogged } from "./run.js";
 import { bold, cyan, dim, fail, info, ok, step, warn } from "./ui.js";
 
@@ -25,7 +25,7 @@ export function diagnose(lines = []) {
   const tips = [];
   if (/EACCES|permission denied/i.test(text)) tips.push("권한 문제입니다. 폴더 소유자를 확인하고, `sudo`로 npm을 실행하지 마세요.");
   if (/ENOTFOUND|ETIMEDOUT|ECONNRESET|EAI_AGAIN|network|Could not resolve host/i.test(text)) tips.push("네트워크 문제로 보입니다. 인터넷 연결과 회사/학교 프록시 설정을 확인하세요.");
-  if (/port is already allocated|address already in use|bind for/i.test(text)) tips.push("이미 쓰고 있는 포트가 있습니다. 해당 포트를 쓰는 프로그램을 종료하거나 이전에 띄운 컨테이너를 `docker compose down`으로 내려 주세요.");
+  if (/port is already allocated|address already in use|bind for/i.test(text)) tips.push("이미 쓰고 있는 포트가 있습니다. 해당 포트를 쓰는 프로그램을 종료하거나 이전에 띄운 컨테이너를 `docker compose down`으로 내려 주세요. DB 포트(5432)라면 `--db-port 5433`처럼 다른 포트를 지정해 다시 실행할 수도 있습니다.");
   if (/unknown flag: --wait/i.test(text)) tips.push("Docker Compose가 오래된 버전입니다. Docker Desktop을 최신 버전으로 업데이트하세요.");
   if (/Cannot connect to the Docker daemon|docker daemon|error during connect/i.test(text)) tips.push("Docker Desktop이 꺼져 있습니다. 실행하고 완전히 켜진 뒤 다시 시도하세요.");
   if (/password authentication failed/i.test(text)) tips.push("5432 포트에서 응답한 DB가 `starter` 계정의 비밀번호를 거절했습니다. 먼저 5432를 쓰는 것이 무엇인지 확인하세요: `lsof -nP -iTCP:5432 -sTCP:LISTEN` (Windows: `netstat -ano | findstr :5432`). 직접 설치한 Postgres나 다른 프로젝트의 DB 컨테이너라면 그것을 끄거나 포트를 바꾸세요. 이 프로젝트의 DB가 맞다면 이전 실행의 볼륨이 남은 것이니 `docker compose down -v` 후 다시 실행하세요 (DB 데이터가 모두 지워집니다).");
@@ -47,8 +47,8 @@ export function printFailure({ title, cause, hint, logPath, retry = "setup" }) {
 }
 
 /** 단계 목록. 각 단계는 다시 실행해도 안전해야 한다. */
-export function buildSteps(root, logPath) {
-  const run = (cmd, args, cwd, label) => runLogged(cmd, args, { cwd: join(root, cwd), logFile: logPath, label });
+export function buildSteps(root, logPath, { dbPort = null } = {}) {
+  const run = (cmd, args, cwd, label, env) => runLogged(cmd, args, { cwd: join(root, cwd), logFile: logPath, label, env });
   return [
     {
       title: "프론트엔드 라이브러리 설치 (npm install)",
@@ -66,7 +66,13 @@ export function buildSteps(root, logPath) {
       run: async () => {
         try {
           const made = await ensureEnvFiles(root);
-          return { code: 0, tail: [], note: made.length ? `만든 파일: ${made.join(", ")}` : "이미 준비되어 있습니다 (건너뜀)" };
+          let note = made.length ? `만든 파일: ${made.join(", ")}` : "이미 준비되어 있습니다 (건너뜀)";
+          if (dbPort) {
+            const changed = await setDbPort(root, dbPort);
+            if (!changed.length) return { code: 1, tail: ["--db-port를 적용하지 못했습니다: backend/.env에서 로컬 DB 주소(starter 계정, localhost)를 찾지 못했습니다.", "Supabase 로컬이나 원격 DB를 쓰는 중이라면 DATABASE_URL을 직접 확인하세요."] };
+            note += ` / DB 포트 ${dbPort} (${changed.join(", ")})`;
+          }
+          return { code: 0, tail: [], note };
         } catch (e) {
           return { code: 1, tail: [e.message] };
         }
@@ -74,9 +80,9 @@ export function buildSteps(root, logPath) {
     },
     {
       title: "데이터베이스 실행 (docker compose)",
-      hint: "Docker Desktop이 실행 중인지, 5432 포트를 다른 프로그램이 쓰고 있지 않은지 확인하세요.",
+      hint: "Docker Desktop이 실행 중인지, 5432 포트를 다른 프로그램이 쓰고 있지 않은지 확인하세요. 쓰고 있다면 `--db-port 5433`처럼 다른 포트로 다시 실행하세요.",
       run: async () => {
-        const r = await run("docker", ["compose", "up", "-d", "--wait", "db"], ".", "docker compose up");
+        const r = await run("docker", ["compose", "up", "-d", "--wait", "db"], ".", "docker compose up", await dbComposeEnv(root));
         if (r.code !== 0) return r;
         // 켜졌더라도 backend/.env 가 가리키는 포트로 열려 있어야 한다. 다른 DB가 그 포트를 쓰고 있으면 거기에 마이그레이션이 실행된다.
         const problem = await checkDbPort(root);
@@ -189,6 +195,11 @@ export async function runSetup(args) {
     return 1;
   }
   const chosen = parsed.ports;
+  const db = parseDbPort(args, chosen);
+  if (db.error) {
+    fail(db.error);
+    return 1;
+  }
   const logPath = join(root, LOG_NAME);
 
   info(bold("Meerkit 환경을 점검합니다."));
@@ -200,7 +211,7 @@ export async function runSetup(args) {
   // 5432는 DB 컨테이너가 이미 우리 것으로 떠 있으면 정상이므로 setup의 DB 단계에서 확인한다.
   if (!printChecks([...tools, ...ports])) return 1;
 
-  const steps = buildSteps(root, logPath);
+  const steps = buildSteps(root, logPath, { dbPort: db.value });
   for (const [i, s] of steps.entries()) {
     step(i + 1, steps.length, s.title);
     const r = await s.run();

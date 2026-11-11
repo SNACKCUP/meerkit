@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { createInterface } from "node:readline/promises";
 
+import { checkDbPort, composeDbPort, dbComposeEnv } from "./dbport.js";
 import { activePorts } from "./ports.js";
 import { listenersOf } from "./proc.js";
 import { findProjectRoot } from "./setup.js";
@@ -12,7 +13,7 @@ import { bold, cyan, dim, fail, info, ok, warn } from "./ui.js";
 
 const isWin = process.platform === "win32";
 
-const inherit = (cmd, args, cwd) => spawnSync(cmd, args, { cwd, stdio: "inherit", shell: isWin }).status ?? 1;
+const inherit = (cmd, args, cwd, env) => spawnSync(cmd, args, { cwd, stdio: "inherit", shell: isWin, env: { ...process.env, ...env } }).status ?? 1;
 
 /** backend/.env 의 DATABASE_URL에서 호스트·포트를 읽는다. 비밀번호는 읽어도 다루지 않는다. */
 export async function databaseTarget(root, key = "DATABASE_URL") {
@@ -90,8 +91,8 @@ export async function runDb(args) {
 
   // reset: 로컬 docker-compose DB를 지우고 처음부터 다시 만든다
   const target = await databaseTarget(root);
-  if (!target?.local || target.port !== 5432) {
-    fail("reset은 이 프로젝트의 docker-compose DB(localhost:5432)에서만 실행합니다.");
+  if (!target?.local || (await composeDbPort(root)) === null) {
+    fail("reset은 이 프로젝트의 docker-compose DB(localhost, starter 계정)에서만 실행합니다.");
     info(`  backend/.env 의 DATABASE_URL 이 ${target ? `${target.host}:${target.port}` : "없거나 읽을 수 없음"} 입니다. 다른 DB를 지우는 사고를 막기 위해 멈춥니다.`);
     return 1;
   }
@@ -112,7 +113,14 @@ export async function runDb(args) {
   info(dim("\n1/4 DB 컨테이너와 볼륨 삭제 (docker compose down -v)"));
   if (inherit("docker", ["compose", "down", "-v"], root) !== 0) return 1;
   info(dim("2/4 DB 새로 켜기"));
-  if (inherit("docker", ["compose", "up", "-d", "--wait", "db"], root) !== 0) return 1;
+  if (inherit("docker", ["compose", "up", "-d", "--wait", "db"], root, await dbComposeEnv(root)) !== 0) return 1;
+  // 켜졌더라도 DATABASE_URL 포트로 열린 것이 우리 DB여야 한다. 아니면 다른 DB에 마이그레이션·시드가 실행된다.
+  const problem = await checkDbPort(root);
+  if (problem) {
+    fail(problem.summary);
+    for (const line of [...problem.lines, ...problem.fixes]) info(`  ${line}`);
+    return 1;
+  }
   info(dim("3/4 마이그레이션"));
   if (migrate(root) !== 0) return 1;
   info(dim("4/4 관리자 계정"));
