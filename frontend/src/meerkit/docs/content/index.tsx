@@ -16,6 +16,7 @@ import { ProfileImageDoc } from "./profile-image";
 import { AddressFieldDoc, EmailVerificationDoc, FileDropzoneDoc, NicknameDoc, RoleManagerDoc } from "./extras";
 import { AiPromptInputDoc, ApiKeyInputDoc, ThinkingIndicatorDoc } from "./ai";
 import { Faq, Hooks } from "./reference";
+import { AdminTemplateDoc } from "./admin-template";
 import { MemberAiUsageDoc, MemberAiUsageHistoryDoc } from "./usage";
 
 // nav.ts의 slug와 같은 키로 본문을 연결한다.
@@ -69,6 +70,7 @@ export const docContent: Record<string, ComponentType> = {
   "role-manager": RoleManagerDoc,
   "role-select": RoleSelectDoc,
   "route-guards": RouteGuardsDoc,
+  "admin-template": AdminTemplateDoc,
   "ai-prompt-input": AiPromptInputDoc,
   "thinking-indicator": ThinkingIndicatorDoc,
   "api-key-input": ApiKeyInputDoc,
