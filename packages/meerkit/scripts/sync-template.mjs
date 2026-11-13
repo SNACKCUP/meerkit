@@ -142,6 +142,8 @@ async function stripDocs(front) {
 
   await rm(join(src, "meerkit", "docs"), { recursive: true, force: true });
   await rm(join(src, "app", "(meerkit)", "docs"), { recursive: true, force: true });
+  // 관리자 템플릿 미리보기(/admin/kit)는 설명서에서만 여는 화면이라 같이 뺀다. AdminKit 부품은 남는다.
+  await rm(join(src, "app", "(meerkit)", "admin", "kit"), { recursive: true, force: true });
 
   // sitemap: 설명서 주소 없이 앱 화면만 (docsOnly일 때는 비운다)
   await writeFile(
