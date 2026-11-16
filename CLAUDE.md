@@ -87,8 +87,8 @@ Claude Code 같은 AI 도구가 이 저장소에서 코드를 만들 때 따르�
 ## 1. 위치 규칙
 
 - 프론트 킷 코드는 `frontend/src/meerkit/`에만 둔다. `src/app/`에는 킷을 연결하는 얇은 파일만 둔다.
-- 백엔드 킷 코드는 `backend/app/core`, `users`, `auth`, `permissions`, `account`, `social`, `llm`, `mail`, `storage`, `codes`에 둔다. 서비스 코드는 `backend/app/features/`에 둔다.
-- 킷끼리는 한 방향으로만 import 한다: `core ← users ← auth ← permissions ← account`, `mail`·`llm`·`storage`·`codes`는 `core`만, `users`는 `storage`도 씀, `social`은 `core`·`users`·`auth`만 (`tests/test_import_rules.py`의 층 표). 바꿔야 하면 먼저 협의한다.
+- 백엔드 킷 코드는 `backend/app/core`, `users`, `auth`, `permissions`, `account`, `social`, `llm`, `mail`, `storage`, `codes`, `crypto`에 둔다. 서비스 코드는 `backend/app/features/`에 둔다.
+- 킷끼리는 한 방향으로만 import 한다: `core ← users ← auth ← permissions ← account`, `mail`·`llm`·`storage`·`codes`·`crypto`는 `core`만, `users`는 `storage`도 씀, `users`·`auth`·`social`은 `crypto`도 씀, `social`은 그 밖에 `core`·`users`·`auth`만 (`tests/test_import_rules.py`의 층 표). 바꿔야 하면 먼저 협의한다.
 
 | 만들 것             | 위치                                                                                     |
 | ------------------- | ---------------------------------------------------------------------------------------- |
@@ -144,6 +144,7 @@ Claude Code 같은 AI 도구가 이 저장소에서 코드를 만들 때 따르�
 - 비밀번호는 argon2 해시로 저장하고 응답에 포함하지 않는다.
 - 로컬 테스트용 기본 비밀번호(`SEED_ADMIN_PASSWORD`)는 `.env.example`과 문서에 "로컬 전용"이라고 표시한다.
 - `.env`는 커밋하지 않는다.
+- 다시 꺼내 써야 하는 개인정보(이메일·전화번호·생년월일·주소·우편번호)는 `app.crypto`(`EncryptedString`·`EncryptedDate`, AES-256-GCM)로 암호화해 저장하고, 찾아야 하면 `email_index`·`phone_index` 지문 칸으로 찾는다. 기존 `users` 평문 컬럼은 계획 23의 단계(컬럼 추가 → 채우기 → 읽기 전환 → 평문 삭제)로 옮긴다. 키는 `PII_*` 환경변수에만 두고, 평문·키·암호문을 로그에 남기지 않는다.
 
 ## 8. 확인 명령
 
