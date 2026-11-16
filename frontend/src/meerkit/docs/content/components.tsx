@@ -696,6 +696,13 @@ export function RouteGuardsDoc() {
         ]}
       />
       <Callout tone="warn">가드는 화면 보호용입니다. 데이터 보호는 백엔드가 같은 규칙으로 다시 검증해야 합니다.</Callout>
+      <H2>Where to put it</H2>
+      <P>
+        <Ic>RequireAuth</Ic>와 <Ic>RequireRole</Ic>은 <Ic>page</Ic> 안에서 쓰세요(킷의 <Ic>/me</Ic>도 이렇게 씁니다). 로그인을 확인하기 전에는 <Ic>children</Ic>을 그리지 않기 때문에,
+        <Ic>layout</Ic>에서 감싸면 개발 서버가 그 아래 화면마다 &quot;Could not validate that a segment in your UI has instant navigation&quot; 오류를 띄웁니다.
+        <Ic>layout</Ic>에 둘 거면 그 아래 각 <Ic>page.tsx</Ic>에 <Ic>export const instant = false</Ic>를 넣으세요. <Ic>layout</Ic>에 넣으면 효과가 없습니다.
+      </P>
+      <CodeBlock title="app/(service)/items/page.tsx" code={`import { RequireAuth } from "@/meerkit";\nimport { ItemsView } from "./view";\n\nexport default function Page() {\n  return (\n    <RequireAuth>\n      <ItemsView />\n    </RequireAuth>\n  );\n}`} />
       <H2>States</H2>
       <DocTable
         head={["상황", "RequireAuth", "RequireRole"]}
