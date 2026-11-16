@@ -710,7 +710,9 @@ export function RouteGuardsDoc() {
         <li>서비스 화면(<Ic>app/(service)/</Ic>)에서도 같은 방식으로 감싸면 됩니다.</li>
       </UL>
       <H2>Customization</H2>
-      <P>안내 문구와 모양은 <Ic>auth/guards/</Ic> 안의 두 파일에서 바꿉니다. 로그인하지 않은 사용자를 다른 페이지로 보내고 싶다면 <Ic>RequireAuth</Ic>에서 <Ic>router.replace</Ic>를 호출하세요.</P>
+      <P>로그인 안내 화면은 <Ic>RequireAuth</Ic>의 <Ic>fallback</Ic> prop으로 바꿉니다. 넘기지 않으면 기본 안내(문구와 로그인 버튼)를 씁니다. 킷 파일을 고칠 필요가 없습니다.</P>
+      <CodeBlock title="tsx" code={`import { RequireAuth, useAuthDialog } from "@/meerkit";\n\nfunction LoginGuide() {\n  const openDialog = useAuthDialog((s) => s.openDialog);\n  return <button onClick={() => openDialog("login")}>우리 서비스 로그인</button>;\n}\n\n<RequireAuth fallback={<LoginGuide />}>\n  <MyPage />\n</RequireAuth>`} />
+      <P>로그인하지 않은 사용자를 다른 페이지로 보내고 싶다면 <Ic>fallback</Ic> 안에서 <Ic>router.replace</Ic>를 호출하세요. <Ic>RequireRole</Ic>의 안내 문구는 <Ic>auth/guards/RequireRole.tsx</Ic>에서 바꿉니다.</P>
     </>
   );
 }

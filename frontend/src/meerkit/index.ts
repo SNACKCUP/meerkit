@@ -9,6 +9,7 @@ export { RequireAuth } from "./auth/guards/RequireAuth";
 export { RequireRole } from "./auth/guards/RequireRole";
 export { GuestOnly } from "./auth/guards/GuestOnly";
 export { useAuth } from "./auth/hooks";
+export { useAuthDialog, type AuthDialogMode } from "./auth/dialog-store";
 export { AiPromptInput, type AiAgent } from "./ai/AiPromptInput";
 export { ThinkingIndicator } from "./ai/ThinkingIndicator";
 export { ThinkingOrb, ORB_STATES, type OrbState } from "./ai/ThinkingOrb";
