@@ -155,6 +155,7 @@ meerkit/
 | `LOG_LEVEL`, `LOG_FORMAT` | backend | 로그 수준(기본 INFO)과 형식(`json`/`text`, 비우면 로컬 text·운영 json) |
 | `TEST_DATABASE_URL` | backend | pytest 전용 DB 주소 (이름이 `_test`로 끝나야 함, 비우면 `DATABASE_URL` 사용) |
 | `JWT_SECRET_KEY` | backend | JWT 서명 키, 32자 이상 (운영에서는 반드시 변경) |
+| `PII_ENCRYPTION_KEYS`, `PII_ENCRYPTION_ACTIVE_KEY`, `PII_HMAC_KEY` | backend | 개인정보 암호화 키(`버전:키` 목록)와 검색용 지문 키. `.env.example` 값은 **로컬 전용**, 운영 키는 `uv run python -m app.crypto.keygen`으로 만들고 따로 보관 (`app/crypto/config.py`) |
 | `JWT_EXPIRE_MINUTES` | backend | 액세스 토큰 유효 시간(분, 기본 30) |
 | `REFRESH_TOKEN_EXPIRE_DAYS` | backend | 리프레시 토큰(httpOnly 쿠키) 유효 기간(일, 기본 14) |
 | `COOKIE_SECURE` | backend | 배포(https)에서는 `true` |

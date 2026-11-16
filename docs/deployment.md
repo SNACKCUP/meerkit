@@ -71,6 +71,7 @@ Settings → Environments → **New environment** `production`:
 | `APP_ENV` | `production` |
 | `DATABASE_URL` | Supabase Session pooler 주소 |
 | `JWT_SECRET_KEY` | `openssl rand -hex 32` 결과 |
+| `PII_ENCRYPTION_KEYS`, `PII_HMAC_KEY` | `cd backend && uv run python -m app.crypto.keygen` 결과 두 줄. 로컬 예시 키를 쓰면 시작하지 않음. **DB 백업과 다른 안전한 곳(비밀번호 관리자 등)에 따로 보관** — 잃으면 암호화한 개인정보를 되살릴 수 없음. 바꾸지 말고 계속 씀 (암호화 키 교체는 새 버전을 뒤에 붙임) |
 | `COOKIE_SECURE` | `true` |
 | `CORS_ORIGINS` | `https://meerkit.dev` |
 | `FRONTEND_BASE_URL` | `https://meerkit.dev` |

@@ -24,6 +24,7 @@ flowchart TB
         mail["mail<br/>send_mail · 템플릿 · console/smtp/fake"]
         storage["storage<br/>get_storage(공개) · get_private_storage(비공개) · S3 호환(Supabase Storage)/memory"]
         codes["codes<br/>공통코드 (owner: MEERKIT/서비스 이름) · require_code · 조회·관리 API"]
+        crypto["crypto<br/>개인정보 양방향 암호화(AES-256-GCM) · 검색용 지문(HMAC) · 전화번호 정규화"]
     end
     subgraph FEAT["서비스 (교체 가능)"]
         demo["features/llm_demo<br/>/api/llm/chat · 웰컴 페이지 AI 체험 (로그인 필요, 사용자 API 키)"]
@@ -48,14 +49,15 @@ flowchart TB
     llm --> core
     storage --> core
     codes --> core
+    crypto --> core
 ```
 
-- **공통 모듈끼리도 한 방향으로만 의존합니다:** `core ← users ← auth ← permissions ← account`, `mail`·`llm`·`storage`·`codes`는 `core`만(`users`는 프로필 이미지 때문에 `storage`를 씀). `social`은 `core`·`users`·`auth`만 쓰고, `social`을 import 하는 킷은 없습니다(`app/api.py`만 라우터 등록). 서로 참조(↔)나 역방향 import는 `tests/test_import_rules.py`의 층 표(`ALLOWED_KIT_IMPORTS`)가 막습니다. 표를 바꿔야 하면 팀과 먼저 협의합니다.
+- **공통 모듈끼리도 한 방향으로만 의존합니다:** `core ← users ← auth ← permissions ← account`, `mail`·`llm`·`storage`·`codes`·`crypto`는 `core`만(`users`는 프로필 이미지 때문에 `storage`를 씀). 개인정보를 저장·검색하는 `users`·`auth`·`social`은 `crypto`를 쓸 수 있습니다(계획 23, 지금은 층 표에 자리만 있고 실제 사용은 다음 단계부터). `social`은 `core`·`users`·`auth`만 쓰고, `social`을 import 하는 킷은 없습니다(`app/api.py`만 라우터 등록). 서로 참조(↔)나 역방향 import는 `tests/test_import_rules.py`의 층 표(`ALLOWED_KIT_IMPORTS`)가 막습니다. 표를 바꿔야 하면 팀과 먼저 협의합니다.
 - `users`에는 HTTP(라우터)를 두지 않습니다. 로그인 확인(auth)과 권한 검사가 함께 필요한 회원 API는 맨 위 `account`가 조합합니다(Spring의 Controller 패키지 역할).
 - **권한 검사는 `core`에 있습니다 (`app.core.principal`).** 요청마다 `auth`의 `load_principal`(앱 전체 공통 의존성)이 토큰과 DB를 확인해 현재 사용자(id, 역할)를 `request.state`에 담고, `require_admin`·`require_role(...)`·`require_login`은 그 값만 읽습니다(Spring의 `SecurityContextHolder` + `@PreAuthorize`). 그래서 어느 킷 모듈이든 `core`만 import 해서 권한을 검사할 수 있고, 역할을 매 요청 DB에서 읽으므로 회수·비활성화가 바로 반영됩니다. 등록이 빠지면 401로 닫힙니다.
 
 - 화살표는 "import 한다"는 뜻입니다.
-- **킷(`core`, `users`, `auth`, `permissions`, `account`, `social`, `llm`, `mail`, `storage`, `codes`)은 `features/`를 절대 import 하지 않습니다.** `tests/test_import_rules.py`가 검사합니다.
+- **킷(`core`, `users`, `auth`, `permissions`, `account`, `social`, `llm`, `mail`, `storage`, `codes`, `crypto`)은 `features/`를 절대 import 하지 않습니다.** `tests/test_import_rules.py`가 검사합니다.
 - `features/` 안의 기능끼리도 서로 import 하지 않습니다. 공통으로 필요해지면 공통 기반으로 올립니다.
 - 각 모듈 안에서는 `router → service → repository` 방향으로만 import 합니다.
 - 프론트엔드도 같습니다: 킷(`src/meerkit`)은 `src/app`(라우트·서비스 화면)을 import 하지 않고, `src/app`은 킷을 `@/meerkit`(공개 API)으로만 씁니다. 서비스 화면(`src/app/(service)`)에서 `@/meerkit/…` 내부 파일을 직접 import 하거나 킷이 `@/app`을 import 하면 `npm run lint`가 실패합니다 (`frontend/eslint.config.mjs`). 킷을 연결하는 `src/app/(meerkit)`는 킷의 일부라서 내부 파일을 직접 import 할 수 있습니다.
@@ -112,6 +114,11 @@ backend/
 │   ├── storage/           # 파일 저장소 (킷, core만 import). 설정 순서는 storage-setup.md
 │   │   ├── config.py      # STORAGE_* 설정 + 운영 검사(memory 금지, localhost 주소 금지, 공개·비공개 버킷 같음 금지)
 │   │   └── backends.py    # get_storage()(공개)·get_private_storage()(비공개): s3(Supabase Storage·S3·R2) / memory(테스트), override_*()
+│   ├── crypto/            # 개인정보 암호화 (킷, core만 import). 키는 PII_* 환경변수, 새 키는 python -m app.crypto.keygen
+│   │   ├── aead.py        # encrypt/decrypt (AES-256-GCM, [키 버전][nonce][암호문+태그], aad="테이블.컬럼"), reencrypt(키 교체)
+│   │   ├── blind_index.py # email_index·phone_index(HMAC-SHA256 지문), normalize_email·normalize_phone(E.164)·format_phone
+│   │   ├── columns.py     # EncryptedString·EncryptedDate (SQLAlchemy 컬럼 타입, DB 는 bytea)
+│   │   └── config.py      # PII_ENCRYPTION_KEYS·PII_ENCRYPTION_ACTIVE_KEY·PII_HMAC_KEY + 운영 검사
 │   ├── codes/             # 공통코드 (킷, core만 import). 킷·서비스가 같이 쓰고 owner(MEERKIT/서비스 이름)로 구분
 │   │   ├── models.py      # common_code_groups(group_code는 owner_ 로 시작, CHECK), common_codes
 │   │   ├── service.py     # list_codes(), is_valid_code(), require_code()(400 INVALID_CODE), 관리자 추가·수정
@@ -164,6 +171,7 @@ backend/
 | 탈퇴 | `is_active=false` + `deactivated_at` 기록(관리자 삭제도 같음). 아이디·이메일은 계속 점유 |
 | 개인정보 파기 | 탈퇴 후 `ACCOUNT_RETENTION_DAYS`(365일) 지나면 `uv run python -m app.users.purge`가 아이디·이메일·이름·선택 항목을 지우고 `deleted_at` 기록(행은 남김). 이어서 `uv run python -m app.auth.cleanup`이 탈퇴 회원의 재설정 토큰과 `EMAIL_VERIFICATION_RETENTION_DAYS`(7일) 지난 인증번호 기록을, `uv run python -m app.social.cleanup`이 소셜 연결을 지움. 모두 `--dry-run` 지원, `.github/workflows/account-purge.yml`이 매일 차례로 실행 |
 | 소셜 로그인 | 서버가 시작하고 끝냄: `GET /auth/{provider}/login` → 공급자 → `GET /auth/{provider}/callback`이 리프레시 쿠키를 심고 프론트 `/auth/{provider}/callback`으로 302 (실패는 `?error=코드`). 연결은 `social_accounts`(`provider`+`provider_user_id` 유일). 소셜로만 가입한 계정은 `users.has_password=false`라 아이디 로그인·비밀번호 변경·탈퇴 확인이 막히고, 비밀번호 찾기로 비밀번호를 만들면 풀림. 명세는 [social-oauth-setup.md](social-oauth-setup.md) |
+| 개인정보 암호화 | `app.crypto`. 다시 꺼내 써야 하는 개인정보는 컬럼 타입 `EncryptedString("테이블.컬럼")`·`EncryptedDate`로 암호화(DB는 `bytea`, 매번 다른 암호문). 찾아야 하는 값은 옆에 지문 칸(`email_index`·`phone_index`, hex 64자)을 두고 `WHERE 지문 = ?`로 찾음(정확히 같은 값만, 부분 검색 불가). 키 2종(암호화·지문)은 환경변수에만, 암호화 키는 버전을 붙여 교체 가능. 복호화 실패는 500 `PII_DECRYPT_FAILED`(로그엔 aad·키 버전만), 키가 없으면 503 `PII_CRYPTO_NOT_CONFIGURED`. 기존 `users` 평문 컬럼은 계획 23 단계로 옮기는 중 |
 | 공통코드 | `app.codes`. 킷·서비스가 `common_code_groups`·`common_codes`를 같이 쓰고 `owner`로 구분(`group_code`는 `owner_`로 시작, DB CHECK). 서비스는 자기 묶음을 자기 마이그레이션에서 넣고, 저장 전에 `require_code(db, 묶음, 값)`, 목록은 `list_codes`. 상태값·권한은 넣지 않음 |
 | 메일 | `app.mail.send_mail`만 사용. 서비스 메일 양식은 킷 파일에 넣지 않고 `app.mail.register_template("접두어_이름", 만드는함수)`로 앱 시작 때 등록(같은 이름은 에러). 라우터에서 `BackgroundTasks`로 응답 뒤에 보냄. 로그에 인증번호·링크를 남기지 않음 실제 발송 설정(도메인·DNS·키)은 [mail-setup.md](mail-setup.md) |
 
@@ -269,7 +277,7 @@ frontend/
 ### 설정
 - 모든 설정은 `app/core/config.py`의 `settings`를 통해 읽습니다. 코드에서 `os.environ`을 직접 읽지 않습니다.
 - 비밀값(API 키, JWT 키)은 `.env`에만 두고, `.env.example`에는 항목 이름만 둡니다.
-- `APP_ENV=production`이면 웹 서버가 시작할 때 `settings.check_production()`이 위험한 설정을 막습니다: `JWT_SECRET_KEY`(32자 미만·예시 값), `COOKIE_SECURE=false`, `CORS_ORIGINS`·`FRONTEND_BASE_URL`의 localhost, `MAIL_BACKEND=console|fake`. 고칠 목록만 출력하고 값은 출력하지 않습니다. 배치 작업(탈퇴 계정 정리)은 검사하지 않습니다.
+- `APP_ENV=production`이면 웹 서버가 시작할 때 `settings.check_production()`이 위험한 설정을 막습니다: `JWT_SECRET_KEY`(32자 미만·예시 값), `COOKIE_SECURE=false`, `CORS_ORIGINS`·`FRONTEND_BASE_URL`의 localhost, `MAIL_BACKEND=console|fake`. 개인정보 암호화 키(`PII_ENCRYPTION_KEYS`·`PII_HMAC_KEY`)가 비었거나·형식이 틀리거나·`.env.example` 예시 키이거나·두 키가 같으면 역시 막습니다(`app/crypto/config.py`). 고칠 목록만 출력하고 값은 출력하지 않습니다. 배치 작업(탈퇴 계정 정리)은 검사하지 않습니다.
 
 ### 예외 처리 (`core/exceptions.py`)
 - 모든 오류 응답은 한 가지 형식입니다: `{"detail": "사용자에게 보여 줄 문구", "code": "USER_NOT_FOUND", "request_id": "…"}`. 입력 오류(422)는 `errors: [{field, message, type}]`가 더 붙고, `detail`은 사람이 읽는 문장입니다.
