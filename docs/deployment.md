@@ -56,6 +56,15 @@ Settings → Environments → **New environment** `production`:
 
 탈퇴 계정 정리(`account-purge`, 매일 03:00)는 저장소 Secret `DATABASE_URL`에 같은 주소를 넣으면 시작됩니다.
 
+Settings → Secrets and variables → Actions → **Repository secrets**에 개인정보 암호화 키 2개도 넣습니다. 회원을 저장하는 워크플로(`account-purge`, `seed-admin`, `pii-backfill`)가 씁니다.
+
+| 이름 | 값 |
+| --- | --- |
+| `PII_ENCRYPTION_KEYS` | Render에 넣은 값과 **똑같이** |
+| `PII_HMAC_KEY` | Render에 넣은 값과 **똑같이** |
+
+값이 Render와 다르면 그 워크플로가 저장한 암호문을 서버가 풀지 못하고, 지문도 달라져 검색이 안 됩니다.
+
 비밀 값이 없으면 `deploy`는 아무것도 하지 않고 끝납니다. 준비 전에 병합해도 안전합니다.
 
 ### 3. Render 백엔드
@@ -147,6 +156,19 @@ Environment `production`에 Secret `SEED_ADMIN_PASSWORD`, Variable `SEED_ADMIN_U
 | 새 화면이 이상함 | Vercel → Deployments → 이전 배포 **Promote to Production** |
 | 마이그레이션을 되돌려야 함 | 운영 DB 주소로 `uv run alembic downgrade -1` (데이터가 지워지는 변경인지 먼저 확인) |
 | 키가 샘 | 해당 업체에서 새 키 → Render·GitHub 값 교체·재배포 → 예전 키 삭제 |
+
+## 개인정보 암호화 칸 채우기 (계획 23 K2, 한 번만)
+
+K2(암호화 칸 추가)가 들어간 코드를 처음 배포할 때만 합니다. 새로 가입·수정하는 회원은 서버가 알아서 채우고, 이미 있던 회원은 아래로 채웁니다.
+
+1. 저장소 Secret `PII_ENCRYPTION_KEYS`·`PII_HMAC_KEY`가 있는지 확인 (2단계)
+2. Actions → `deploy` → Run workflow (마이그레이션 `cfe9930b9cfa`로 칸이 생기고 새 코드가 배포됨)
+3. Actions → `pii-backfill` → Run workflow, `dry_run` 켠 채로 → 로그에서 남은 건수 확인
+4. 다시 `pii-backfill`, `dry_run` 끄고 실행 → 로그 마지막에 `남은 행 0건` 확인
+   - `형식이 틀려 지문 없는 전화번호 N건`은 예전에 잘못 입력된 번호입니다. 암호화는 되지만 전화번호로 찾을 수 없습니다. 회원이 번호를 다시 저장하면 고쳐집니다
+5. 여러 번 실행해도 안전합니다 (이미 채운 행은 건너뜀). 로그에는 건수와 id만 나옵니다
+
+되돌리기: 이 단계는 평문을 지우지 않으므로 이전 코드로 되돌려도 됩니다. 칸까지 지우려면 `alembic downgrade 72d61ade7e67`.
 
 ## 운영 중 할 일
 
