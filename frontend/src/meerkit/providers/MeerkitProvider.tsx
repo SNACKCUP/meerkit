@@ -42,7 +42,12 @@ export function MeerkitProvider({ children }: { children: React.ReactNode }) {
       <Suspense fallback={null}>
         <ThemeSync />
       </Suspense>
-      {meerkitConfig.themeToggle && <FloatingThemeToggle />}
+      {/* FloatingThemeToggle은 usePathname()을 써서, Suspense 밖이면 동적 경로([id])의 빌드가 실패한다 */}
+      {meerkitConfig.themeToggle && (
+        <Suspense fallback={null}>
+          <FloatingThemeToggle />
+        </Suspense>
+      )}
       <AuthDialog />
       <Toaster />
     </QueryClientProvider>
