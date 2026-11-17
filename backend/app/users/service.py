@@ -6,6 +6,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from app.codes import require_code
 from app.core.exceptions import AppError
 from app.core.security import generate_token, hash_password, verify_password
 from app.storage import get_storage
@@ -15,6 +16,7 @@ from app.users.roles import DEFAULT_ROLE
 
 logger = logging.getLogger(__name__)
 
+GENDER_CODE_GROUP = "MEERKIT_GENDER"  # 성별 공통코드 (MALE/FEMALE/NONE). 값 추가·이름 변경은 MASTER 가 공통코드 관리에서
 RESERVED_LOGIN_ID_PREFIX = "deleted_"  # 개인정보를 지운 계정의 아이디에 씁니다
 
 
@@ -39,6 +41,15 @@ class UserError(AppError):
 
     def __init__(self, code: str, message: str):
         super().__init__(code, message, status_code=_STATUS.get(code, 400))
+
+
+def _check_gender(db: Session, gender: str | None) -> str | None:
+    """성별을 공통코드 값으로 맞추고 검사합니다. 소문자(옛 화면)도 받아 대문자로 바꿉니다. 목록에 없으면 400 INVALID_CODE"""
+    if gender is None:
+        return None
+    gender = gender.strip().upper()
+    require_code(db, GENDER_CODE_GROUP, gender)
+    return gender
 
 
 def is_login_id_available(db: Session, login_id: str) -> bool:
@@ -77,6 +88,8 @@ def create_user(
     if profile.get("nickname") and repository.get_by_nickname(db, profile["nickname"]):
         raise UserError("NICKNAME_TAKEN", "이미 사용 중인 닉네임입니다.")
     pii.check_phone(profile.get("phone"))  # 틀리면 400 INVALID_PHONE
+    if "gender" in profile:
+        profile["gender"] = _check_gender(db, profile["gender"])
     terms = _check_terms(db, agreed_terms) if agreed_terms is not None else []
     user = User(
         login_id=login_id,
@@ -142,6 +155,8 @@ def update_profile(
         changes = {k: v for k, v in changes.items() if k != "email"}
     if "phone" in changes:
         pii.check_phone(changes["phone"])  # 틀리면 400 INVALID_PHONE
+    if "gender" in changes:
+        changes = {**changes, "gender": _check_gender(db, changes["gender"])}
     nickname = changes.get("nickname")
     if nickname and nickname != user.nickname:
         other = repository.get_by_nickname(db, nickname)

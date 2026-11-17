@@ -41,6 +41,7 @@ flowchart TB
     auth --> users
     auth --> mail
     users --> storage
+    users --> codes
     users --> core
     auth --> core
     social --> core
@@ -52,7 +53,7 @@ flowchart TB
     crypto --> core
 ```
 
-- **공통 모듈끼리도 한 방향으로만 의존합니다:** `core ← users ← auth ← permissions ← account`, `mail`·`llm`·`storage`·`codes`·`crypto`는 `core`만(`users`는 프로필 이미지 때문에 `storage`를 씀). 개인정보를 저장·검색하는 `users`·`auth`·`social`은 `crypto`를 쓸 수 있습니다(계획 23. `users`·`auth`·`social`의 이메일·전화번호 등은 암호화 칸에 저장하고 지문 칸으로 찾음). `social`은 `core`·`users`·`auth`만 쓰고, `social`을 import 하는 킷은 없습니다(`app/api.py`만 라우터 등록). 서로 참조(↔)나 역방향 import는 `tests/test_import_rules.py`의 층 표(`ALLOWED_KIT_IMPORTS`)가 막습니다. 표를 바꿔야 하면 팀과 먼저 협의합니다.
+- **공통 모듈끼리도 한 방향으로만 의존합니다:** `core ← users ← auth ← permissions ← account`, `mail`·`llm`·`storage`·`codes`·`crypto`는 `core`만(`users`는 프로필 이미지 때문에 `storage`를, 성별 값 검사(공통코드 `MEERKIT_GENDER`) 때문에 `codes`를 씀). 개인정보를 저장·검색하는 `users`·`auth`·`social`은 `crypto`를 쓸 수 있습니다(계획 23. `users`·`auth`·`social`의 이메일·전화번호 등은 암호화 칸에 저장하고 지문 칸으로 찾음). `social`은 `core`·`users`·`auth`만 쓰고, `social`을 import 하는 킷은 없습니다(`app/api.py`만 라우터 등록). 서로 참조(↔)나 역방향 import는 `tests/test_import_rules.py`의 층 표(`ALLOWED_KIT_IMPORTS`)가 막습니다. 표를 바꿔야 하면 팀과 먼저 협의합니다.
 - `users`에는 HTTP(라우터)를 두지 않습니다. 로그인 확인(auth)과 권한 검사가 함께 필요한 회원 API는 맨 위 `account`가 조합합니다(Spring의 Controller 패키지 역할).
 - **권한 검사는 `core`에 있습니다 (`app.core.principal`).** 요청마다 `auth`의 `load_principal`(앱 전체 공통 의존성)이 토큰과 DB를 확인해 현재 사용자(id, 역할)를 `request.state`에 담고, `require_admin`·`require_role(...)`·`require_login`은 그 값만 읽습니다(Spring의 `SecurityContextHolder` + `@PreAuthorize`). 그래서 어느 킷 모듈이든 `core`만 import 해서 권한을 검사할 수 있고, 역할을 매 요청 DB에서 읽으므로 회수·비활성화가 바로 반영됩니다. 등록이 빠지면 401로 닫힙니다.
 

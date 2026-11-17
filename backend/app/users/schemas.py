@@ -56,7 +56,7 @@ class UserRead(BaseModel):
     address: str | None = Field(default=None, description="기본 주소 (선택)", examples=["서울 강남구 테헤란로 123"])
     address_detail: str | None = Field(default=None, description="상세 주소 (선택)", examples=["4층 401호"])
     birth_date: date | None = Field(default=None, description="생년월일 (선택)", examples=["1995-04-12"])
-    gender: str | None = Field(default=None, description="성별: male, female, none (선택)", examples=["female"])
+    gender: str | None = Field(default=None, description="성별: 공통코드 MEERKIT_GENDER 값 MALE, FEMALE, NONE (선택)", examples=["FEMALE"])
     avatar_url: str | None = Field(default=None, description="프로필 이미지 주소 (선택)", examples=[None])
     email_verified: bool = Field(description="이메일 인증을 마쳤는지", examples=[True])
     roles: list[RoleRead] = Field(description="가진 역할 목록")
@@ -156,7 +156,7 @@ class ProfileUpdate(BaseModel):
     address: str | None = Field(default=None, max_length=255, description="기본 주소", examples=["서울 강남구 테헤란로 123"])
     address_detail: str | None = Field(default=None, max_length=255, description="상세 주소", examples=["4층 401호"])
     birth_date: date | None = Field(default=None, description="생년월일 (YYYY-MM-DD)", examples=["1995-04-12"])
-    gender: str | None = Field(default=None, max_length=10, description="성별: male, female, none", examples=["female"])
+    gender: str | None = Field(default=None, max_length=10, description="성별: 공통코드 MEERKIT_GENDER 값 MALE, FEMALE, NONE", examples=["FEMALE"])
 
     _blank_to_none = field_validator(*OPTIONAL_PROFILE_FIELDS, mode="before")(blank_to_none)
 

@@ -128,3 +128,18 @@ export interface Page<T> {
 export interface TokenResponse {
   access_token: string;
 }
+
+// 공통코드 (GET /api/codes/{group_code}). 켜진 값만 sort_order 순으로 온다
+export interface CodeItem {
+  code: string;
+  label: string;
+  sort_order: number;
+}
+
+export interface CodeGroup {
+  group_code: string;
+  owner: string;
+  name: string;
+  description: string | null;
+  codes: CodeItem[];
+}
