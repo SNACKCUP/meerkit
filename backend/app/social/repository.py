@@ -48,11 +48,11 @@ def delete_of_deleted_users(db: Session) -> int:
     return result.rowcount or 0
 
 
-# ---- 개인정보 암호화 칸 채우기 (계획 23 K2, app.social.pii_backfill) ----
+# ---- 개인정보 암호화 칸 채우기 (계획 23, app.social.pii_backfill) ----
 
 
 def _email_enc_missing():
-    return SocialAccount.email.is_not(None) & SocialAccount.email_enc.is_(None)
+    return SocialAccount.legacy_email.is_not(None) & SocialAccount.email.is_(None)
 
 
 def email_enc_missing_batch(db: Session, after_id: int, limit: int) -> list[SocialAccount]:

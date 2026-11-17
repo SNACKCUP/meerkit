@@ -9,6 +9,8 @@
 | 앱 컨테이너화 | 백엔드 Dockerfile은 만들었음([배포](deployment.md)). 프론트 Dockerfile과 전체 서비스 Docker Compose |
 | 배포 | 운영 배포(승인 → 마이그레이션 → Render)는 만들었음([배포](deployment.md)). 스테이징 환경, 프론트 배포 승인, Supabase Pro(자동 백업·일시정지 없음) |
 | 인증 | 소셜 로그인, 2단계 인증, 리프레시 토큰 회전·서버 저장(기기별 로그아웃), IP 기준 요청 제한 |
+| 전화번호 인증 (SMS) | 지금 전화번호 아이디 찾기는 가입한 이메일로 아이디를 보냄(번호를 확인하지 않아서). SMS 업체를 붙이면 킷 모듈 `app/sms`(`mail`과 같은 모양) + `phone_verifications`(번호 지문만 저장) → `users.phone_verified_at` 기록, 인증된 번호만 화면에 가린 아이디 보여 주기, 확인된 번호는 활성 계정 하나만 (계획 23 §8-3·8-4) |
+| 개인정보 암호화 | 고객 원본 문서(비공개 버킷) 파일 단위 암호화, 암호화 키 교체 명령(옛 키 버전 행을 새 키로 다시 암호화), 토큰 해시용 키를 JWT 키와 분리 |
 | 권한 | 역할별 세부 권한: 지금은 역할 4종(MASTER/OWNER/VIEWER/WRITER)의 이름만 있고 관리자(MASTER) 검사만 한다. `permissions`, `role_permissions` 테이블을 추가하고 역할 대신 권한 코드(`REQUIREMENT_CONFIRM` 등)로 검사. 지금의 users/roles/user_roles는 그대로 둠 |
 | 메일 | 실제 메일 업체 연결: 업체(AWS SES, Resend, SendGrid 등)를 정하면 `backend/app/mail/backends.py`에 API 백엔드를 추가(지금은 업체의 SMTP로도 연결 가능). 보내는 도메인의 SPF·DKIM·DMARC 등록, 발송 실패 재시도 큐, 반송·수신 거부 처리 |
 | 약관 | 약관 본문 관리 화면, 새 버전 재동의 받기, 마케팅 수신 동의 철회 API |
