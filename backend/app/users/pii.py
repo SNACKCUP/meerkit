@@ -64,6 +64,32 @@ def mask_email(email: str) -> str:
     return f"{keep}{'*' * max(len(local) - len(keep), 1)}@{domain}"
 
 
+def mask_phone(display: str | None) -> str | None:
+    """관리자 목록용 가린 전화번호: 010-1234-5678 → 010-****-5678. 마지막 4자리와 앞 묶음만 남김"""
+    if not display:
+        return display
+    digits = [i for i, ch in enumerate(display) if ch.isdigit()]
+    if len(digits) <= 4:
+        return "*" * len(display)
+    first_group = display.split("-")[0] if "-" in display else display[:3]
+    keep = set(range(len(first_group))) | set(digits[-4:])
+    return "".join(ch if (i in keep or not ch.isdigit()) else "*" for i, ch in enumerate(display))
+
+
+def mask_place(value: str | None, *, keep_words: int = 0, keep_chars: int = 0) -> str | None:
+    """관리자 목록용 가린 주소·우편번호. 주소는 앞 단어만(서울 강남구 ***), 우편번호는 앞 글자만(06***)"""
+    if not value:
+        return value
+    if keep_words:
+        words = value.split()
+        if len(words) > keep_words:
+            return " ".join(words[:keep_words]) + " ***"
+        return "***"
+    if keep_chars:
+        return value[:keep_chars] + "*" * max(len(value) - keep_chars, 1)
+    return "***"
+
+
 def _as_date(value: Any) -> date | None:
     if isinstance(value, str):  # 일부 경로는 저장 직전까지 "YYYY-MM-DD" 문자열로 들고 있음
         return date.fromisoformat(value)
