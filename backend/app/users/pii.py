@@ -1,4 +1,4 @@
-"""회원 개인정보 암호화 칸 맞추기 (계획 23 K3: 읽기 전환).
+"""회원 개인정보 암호화 칸 맞추기 (계획 23).
 
 이제 `user.email`·`phone`·`birth_date`·`postcode`·`address`·`address_detail` 은 암호화 칸(*_enc)입니다
 (models.py 에서 속성 이름은 그대로 두고 DB 칸만 바꿈). 저장할 때 이 함수가
@@ -6,7 +6,7 @@
 - 전화번호는 E.164(+821012345678)로 바꾸고 지문(phone_hash)을, 번호가 바뀌면 phone_verified_at 을 지우고,
 - 생년월일에서 통계용 birth_year 를,
 - 한 칸이라도 바뀌면 그 행의 암호화 칸을 모두 지금 키로 다시 암호화하고 pii_key_version 을
-채웁니다. 되돌리기(K2 코드로)를 위해 옛 평문 칸(legacy_*)에도 같은 값을 계속 씁니다 (K4 에서 칸과 함께 삭제).
+채웁니다. 평문 칸은 없습니다 (K4 에서 삭제).
 
 models.py 의 before_insert/before_update 이벤트가 부르므로, 어느 경로로 저장해도 빠지지 않습니다
 (JPA 의 @PrePersist/@PreUpdate 와 같은 자리). 값 자체는 로그에 남기지 않습니다.
@@ -76,7 +76,6 @@ def sync_on_write(user: Any, changed: set[str]) -> None:
         if user.email is not None:
             user.email = normalize_email(user.email)
         user.email_hash = email_index(user.email) if user.email is not None else None
-        user.legacy_email = user.email
     if "phone" in changed:
         raw = user.phone.strip() if user.phone else None
         old_hash = user.phone_hash
@@ -86,14 +85,9 @@ def sync_on_write(user: Any, changed: set[str]) -> None:
             user.phone = user.phone_hash = None
         if user.phone_hash is None or user.phone_hash != old_hash:
             user.phone_verified_at = None  # 번호가 바뀌면 인증(향후 SMS)을 다시 받아야 함 (모양만 다르면 그대로)
-        user.legacy_phone = raw
     if "birth_date" in changed:
         user.birth_date = _as_date(user.birth_date)
         user.birth_year = user.birth_date.year if user.birth_date is not None else None
-        user.legacy_birth_date = user.birth_date
-    for field in ("postcode", "address", "address_detail"):
-        if field in changed:
-            setattr(user, f"legacy_{field}", getattr(user, field))
     # 바뀌지 않은 칸도 지금 키로 다시 암호화되도록 표시 (값은 같고 암호문만 새로 만듦)
     for field in PII_FIELDS:
         if field not in changed:

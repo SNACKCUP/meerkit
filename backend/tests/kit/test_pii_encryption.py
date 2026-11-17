@@ -1,7 +1,7 @@
 """개인정보 암호화 칸으로 읽기·찾기 (계획 23 K3)
 
 모델의 email·phone·birth_date·postcode·address·address_detail 은 암호화 칸(*_enc)이고, 찾기는 지문 칸으로 합니다.
-되돌리기용으로 옛 평문 칸(legacy_*)에도 같은 값을 씁니다 (K4 에서 삭제).
+옛 평문 칸은 K4 에서 지웠습니다 (테이블에 평문 개인정보 칸이 없음).
 """
 
 import logging
@@ -13,9 +13,8 @@ from sqlalchemy import select, text
 from app.auth.models import EmailVerification
 from app.core.logging import PiiRedactFilter, redact_pii
 from app.crypto import InvalidPhoneError, decrypt, email_index, phone_index
-from app.social import pii_backfill as social_backfill
 from app.social.models import SocialAccount
-from app.users import pii, pii_backfill, repository, service
+from app.users import pii, repository, service
 from app.users.models import User
 from app.users.service import UserError
 
@@ -32,6 +31,12 @@ PROFILE = {
 def _user(db, login_id="kimpii", email="Kim.Pii@Example.com", profile=None, name="김개인"):
     return service.create_user(
         db, login_id=login_id, email=email, password="Password1!", name=name, profile=profile or PROFILE
+    )
+
+
+def _cols(db, table):
+    return set(
+        db.scalars(text("SELECT column_name FROM information_schema.columns WHERE table_name = :t"), {"t": table})
     )
 
 
@@ -59,9 +64,9 @@ def test_signup_stores_ciphertext_and_reads_plaintext(db):
     for col in ("email_enc", "phone_enc", "address_enc", "postcode_enc"):
         raw = bytes(row[col])
         assert b"example" not in raw and "강남".encode() not in raw and b"06236" not in raw
-    # 되돌리기용 옛 평문 칸에도 같은 값 (K4 에서 삭제)
-    assert row["email"] == "kim.pii@example.com" and row["phone"] == "010-1234-5678"
-    assert row["birth_date"] == date(1995, 4, 12) and row["address"] == "서울 강남구 테헤란로 123"
+    # 평문 개인정보 칸은 남아 있지 않음 (K4)
+    for col in ("email", "phone", "postcode", "address", "address_detail", "birth_date"):
+        assert col not in row
     # 모델로 읽으면 평문
     db.expire_all()
     again = db.get(User, user.id)
@@ -99,7 +104,7 @@ def test_profile_change_re_encrypts_whole_row(db):
     service.update_profile(db, user, {"address": "부산 해운대구 1", "birth_date": None})
     after = _raw(db, user.id)
     assert decrypt(after["address_enc"], "users.address") == "부산 해운대구 1"
-    assert after["birth_date_enc"] is None and after["birth_year"] is None and after["birth_date"] is None
+    assert after["birth_date_enc"] is None and after["birth_year"] is None
     # 바뀌지 않은 칸도 새 암호문 (키 버전이 행 안에서 섞이지 않게), 값과 지문은 같음
     assert bytes(after["email_enc"]) != bytes(before["email_enc"])
     assert decrypt(after["email_enc"], "users.email") == "kim.pii@example.com"
@@ -133,7 +138,7 @@ def test_anonymize_clears_encrypted_columns(db):
     db.commit()
     row = _raw(db, user.id)
     assert row["phone_enc"] is None and row["phone_hash"] is None and row["address_enc"] is None
-    assert row["birth_year"] is None and row["phone"] is None and row["address"] is None
+    assert row["birth_year"] is None
     placeholder = decrypt(row["email_enc"], "users.email")
     assert placeholder.endswith("@deleted.invalid") and row["email_hash"] == email_index(placeholder)
 
@@ -228,10 +233,10 @@ def test_email_verification_found_by_hash(db):
     from app.auth import repository as auth_repository
 
     now = datetime.now(UTC)
-    row = EmailVerification(email="code@example.com", code_hash="x" * 64, expires_at=now, created_at=now)
+    row = EmailVerification(email_hash=email_index("code@example.com"), code_hash="x" * 64, expires_at=now, created_at=now)
     db.add(row)
     db.commit()
-    assert row.email_hash == email_index("code@example.com")
+    assert "email" not in _cols(db, "email_verifications")
     assert auth_repository.latest_pending_email_code(db, "CODE@example.com").id == row.id
 
 
@@ -240,45 +245,13 @@ def test_social_account_email_is_encrypted(db):
     account = SocialAccount(user_id=user.id, provider="google", provider_user_id="sub-1", email="g@example.com")
     db.add(account)
     db.commit()
-    raw = db.execute(text("SELECT email, email_enc FROM social_accounts WHERE id = :id"), {"id": account.id}).one()
-    assert decrypt(raw.email_enc, "social_accounts.email") == "g@example.com" and raw.email == "g@example.com"
+    raw = db.execute(text("SELECT email_enc FROM social_accounts WHERE id = :id"), {"id": account.id}).scalar_one()
+    assert decrypt(raw, "social_accounts.email") == "g@example.com"
     account.email = "g2@example.com"
     db.commit()
-    raw = db.execute(text("SELECT email, email_enc FROM social_accounts WHERE id = :id"), {"id": account.id}).one()
-    assert decrypt(raw.email_enc, "social_accounts.email") == "g2@example.com" and raw.email == "g2@example.com"
-
-
-# ---- 채우기 명령 (K2 를 건너뛴 DB 용) ----
-
-
-def test_backfill_copies_legacy_values(db):
-    user = _user(db)
-    db.execute(
-        text("UPDATE users SET phone_enc=NULL, phone_hash=NULL, address_enc=NULL, birth_year=NULL WHERE id = :id"),
-        {"id": user.id},
-    )
-    db.expire_all()
-    user = db.get(User, user.id)
-    pii_backfill._copy_from_legacy(user)
-    db.commit()
-    row = _raw(db, user.id)
-    assert decrypt(row["phone_enc"], "users.phone") == "+821012345678" and row["phone_hash"] == phone_index("01012345678")
-    assert decrypt(row["address_enc"], "users.address") == "서울 강남구 테헤란로 123" and row["birth_year"] == 1995
-    assert pii_backfill.backfill(db, dry_run=True) == 0
-    assert repository.count_pii_unsynced(db) == 0
-
-
-def test_social_backfill_copies_legacy_email(db):
-    user = _user(db)
-    account = SocialAccount(user_id=user.id, provider="google", provider_user_id="sub-1", email="g@example.com")
-    db.add(account)
-    db.commit()
-    db.execute(text("UPDATE social_accounts SET email_enc = NULL WHERE id = :id"), {"id": account.id})
-    db.expire_all()
-    assert social_backfill.backfill(db, dry_run=True) == 1
-    assert social_backfill.backfill(db) == 1
-    assert social_backfill.backfill(db) == 0
-    assert db.get(SocialAccount, account.id).email == "g@example.com"
+    raw = db.execute(text("SELECT email_enc FROM social_accounts WHERE id = :id"), {"id": account.id}).scalar_one()
+    assert decrypt(raw, "social_accounts.email") == "g2@example.com"
+    assert "email" not in _cols(db, "social_accounts")
 
 
 # ---- 로그 안전망 ----

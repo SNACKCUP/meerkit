@@ -144,7 +144,7 @@ Claude Code 같은 AI 도구가 이 저장소에서 코드를 만들 때 따르�
 - 비밀번호는 argon2 해시로 저장하고 응답에 포함하지 않는다.
 - 로컬 테스트용 기본 비밀번호(`SEED_ADMIN_PASSWORD`)는 `.env.example`과 문서에 "로컬 전용"이라고 표시한다.
 - `.env`는 커밋하지 않는다.
-- 다시 꺼내 써야 하는 개인정보(이메일·전화번호·생년월일·주소·우편번호)는 `app.crypto`(`EncryptedString`·`EncryptedDate`, AES-256-GCM)로 암호화해 저장하고, 찾아야 하면 `email_index`·`phone_index` 지문 칸으로 찾는다. 암호화 칸은 `WHERE`·정렬에 쓰지 않는다(쓰면 `TypeError`). 옛 `users` 평문 컬럼(`legacy_*`)은 읽지 않고, 계획 23 K4에서 지운다. 키는 `PII_*` 환경변수에만 두고, 평문·키·암호문을 로그에 남기지 않는다.
+- 다시 꺼내 써야 하는 개인정보(이메일·전화번호·생년월일·주소·우편번호)는 `app.crypto`(`EncryptedString`·`EncryptedDate`, AES-256-GCM)로 암호화해 저장하고, 찾아야 하면 `email_index`·`phone_index` 지문 칸으로 찾는다. 암호화 칸은 `WHERE`·정렬에 쓰지 않는다(쓰면 `TypeError`). 평문 개인정보 컬럼은 만들지 않는다(계획 23 K4에서 모두 지움). 키는 `PII_*` 환경변수에만 두고, 평문·키·암호문을 로그에 남기지 않는다.
 
 ## 8. 확인 명령
 

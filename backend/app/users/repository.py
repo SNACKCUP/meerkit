@@ -145,33 +145,3 @@ def count_withdrawn_before(db: Session, cutoff: datetime) -> int:
         )
         or 0
     )
-
-
-# ---- 개인정보 암호화 칸 채우기 (계획 23, app.users.pii_backfill) ----
-
-
-def _pii_unsynced():
-    """옛 평문 칸에만 값이 있고 암호화 칸을 아직 채우지 않은 행 (K2 이전 회원)"""
-    return User.pii_key_version.is_(None) | User.email_hash.is_(None)
-
-
-def pii_unsynced_batch(db: Session, after_id: int, limit: int) -> list[User]:
-    return list(
-        db.scalars(select(User).where(_pii_unsynced(), User.id > after_id).order_by(User.id).limit(limit))
-    )
-
-
-def count_pii_unsynced(db: Session) -> int:
-    return db.scalar(select(func.count()).select_from(User).where(_pii_unsynced())) or 0
-
-
-def count_phone_without_hash(db: Session) -> int:
-    """전화번호는 있는데 지문이 없는 회원 (형식이 틀린 옛 번호). 전화번호 찾기에서 빠짐"""
-    return (
-        db.scalar(
-            select(func.count())
-            .select_from(User)
-            .where(User.phone.is_not(None), User.phone_hash.is_(None), User.pii_key_version.is_not(None))
-        )
-        or 0
-    )
