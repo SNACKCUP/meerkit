@@ -1,4 +1,4 @@
-"""기존 소셜 연결의 이메일 암호화 칸 채우기 (계획 23 K2). 여러 번 실행해도 안전합니다.
+"""기존 소셜 연결의 이메일 암호화 칸 채우기 (계획 23 K2·K3). 여러 번 실행해도 안전합니다.
 
     uv run python -m app.social.pii_backfill            # 실제 처리
     uv run python -m app.social.pii_backfill --dry-run  # 몇 건 남았는지 세기만
@@ -30,7 +30,7 @@ def backfill(db: Session, *, dry_run: bool = False, batch_size: int = BATCH_SIZE
         if not accounts:
             break
         for account in accounts:
-            account.email_enc = account.email
+            account.email = account.legacy_email
         db.commit()
         total += len(accounts)
         last_id = accounts[-1].id

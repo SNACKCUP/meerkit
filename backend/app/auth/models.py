@@ -15,9 +15,10 @@ class EmailVerification(Base):
     __tablename__ = "email_verifications"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    # 인증번호를 보낸 주소. 다시 꺼내 쓰지 않으며(메일은 요청에 온 주소로 보냄) K4 에서 칸째 지웁니다
     email: Mapped[str] = mapped_column(String(255), index=True)
-    # 이메일 지문 (계획 23). 지금(K2)은 저장할 때 자동으로 같이 채우고, K3 에서 찾기를 이 칸으로 옮긴 뒤 email 칸을 지웁니다
-    email_hash: Mapped[str | None] = mapped_column(String(64), index=True)
+    # 이메일 지문 (계획 23). 찾기는 이 칸으로만. 저장할 때 자동으로 채움 (맨 아래 이벤트)
+    email_hash: Mapped[str] = mapped_column(String(64), index=True)
     code_hash: Mapped[str] = mapped_column(String(64))  # 6자리 번호의 해시 (원문은 메일로만 보냄)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # 이 시각이 지나면 무효
     attempts: Mapped[int] = mapped_column(Integer, server_default="0")  # 틀린 횟수

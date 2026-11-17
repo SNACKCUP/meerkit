@@ -42,9 +42,10 @@ class SocialAccount(TimestampMixin, Base):
     provider_user_id: Mapped[str] = mapped_column(String(255))  # 공급자가 발급한 변하지 않는 id (Google sub 등)
 
     # 아래는 마지막 로그인 때 공급자가 준 값 (표시·연결 판단용). users 의 값을 바꾸지 않습니다.
-    email: Mapped[str | None] = mapped_column(String(255))  # 동의하지 않으면 없을 수 있음 (Kakao·Naver)
-    # 위 email 의 암호문 (계획 23). 지금(K2)은 저장할 때 자동으로 같이 채우고, K3 에서 읽기를 옮긴 뒤 email 칸을 지웁니다
-    email_enc: Mapped[str | None] = mapped_column(EncryptedString("social_accounts.email"))
+    # 공급자가 준 이메일. 동의하지 않으면 없을 수 있음 (Kakao·Naver). 암호화 칸 email_enc (계획 23, 읽으면 평문)
+    email: Mapped[str | None] = mapped_column("email_enc", EncryptedString("social_accounts.email"))
+    # 옛 평문 칸. 읽지 않습니다. K2 코드로 되돌릴 수 있게 같은 값을 계속 쓰고, K4 에서 칸째 지웁니다
+    legacy_email: Mapped[str | None] = mapped_column("email", String(255))
     email_verified: Mapped[bool] = mapped_column(Boolean, server_default=false())  # 공급자가 검증을 보장할 때만 true
     name: Mapped[str | None] = mapped_column(String(50))
     profile_image_url: Mapped[str | None] = mapped_column(String(500))  # 공급자 주소 그대로 (저장소에 복사하지 않음)
@@ -52,11 +53,11 @@ class SocialAccount(TimestampMixin, Base):
 
 
 @event.listens_for(SocialAccount, "before_insert")
-def _fill_email_enc_on_insert(mapper, connection, account: SocialAccount) -> None:
-    account.email_enc = account.email
+def _copy_legacy_email_on_insert(mapper, connection, account: SocialAccount) -> None:
+    account.legacy_email = account.email
 
 
 @event.listens_for(SocialAccount, "before_update")
-def _fill_email_enc_on_update(mapper, connection, account: SocialAccount) -> None:
-    if inspect(account).attrs.email.history.has_changes() or (account.email is not None and account.email_enc is None):
-        account.email_enc = account.email
+def _copy_legacy_email_on_update(mapper, connection, account: SocialAccount) -> None:
+    if inspect(account).attrs.email.history.has_changes():
+        account.legacy_email = account.email

@@ -1,7 +1,16 @@
 from datetime import date, datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    field_serializer,
+    field_validator,
+)
+
+from app.users.pii import display_phone, mask_email
 
 OPTIONAL_PROFILE_FIELDS = (
     "nickname",
@@ -62,6 +71,21 @@ class UserRead(BaseModel):
         default=None, description="보관 기간(365일)이 지나 개인정보를 지운 시각", examples=[None]
     )
 
+    @field_serializer("phone")
+    def _phone_for_display(self, phone: str | None) -> str | None:
+        # DB 에는 +821012345678 로 저장. 응답은 지금처럼 010-1234-5678
+        return display_phone(phone)
+
+
+class UserListItem(UserRead):
+    """관리자 멤버 목록의 한 줄. 이메일은 가려서 보냅니다 (ki***@example.com). 전체 주소는 GET /users/{user_id}"""
+
+    email: str = Field(description="가린 이메일", examples=["ki*@example.com"])
+
+    @field_serializer("email")
+    def _masked_email(self, email: str) -> str:
+        return mask_email(email)
+
 
 class RolesUpdate(BaseModel):
     """회원의 역할을 통째로 바꿉니다 (보낸 목록이 새 역할 전체)."""
@@ -82,7 +106,7 @@ class ActiveUpdate(BaseModel):
 class UserPage(BaseModel):
     """멤버 검색 결과 한 페이지"""
 
-    items: list[UserRead] = Field(description="이 페이지의 회원 목록")
+    items: list[UserListItem] = Field(description="이 페이지의 회원 목록 (이메일은 가림)")
     total: int = Field(description="조건에 맞는 전체 회원 수", examples=[42])
     page: int = Field(description="지금 페이지 (1부터)", examples=[1])
     size: int = Field(description="페이지당 개수", examples=[20])

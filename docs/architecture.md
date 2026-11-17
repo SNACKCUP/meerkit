@@ -52,7 +52,7 @@ flowchart TB
     crypto --> core
 ```
 
-- **공통 모듈끼리도 한 방향으로만 의존합니다:** `core ← users ← auth ← permissions ← account`, `mail`·`llm`·`storage`·`codes`·`crypto`는 `core`만(`users`는 프로필 이미지 때문에 `storage`를 씀). 개인정보를 저장·검색하는 `users`·`auth`·`social`은 `crypto`를 쓸 수 있습니다(계획 23. 지금은 `users`·`auth`·`social`의 모델이 저장할 때 암호화 칸을 같이 채움). `social`은 `core`·`users`·`auth`만 쓰고, `social`을 import 하는 킷은 없습니다(`app/api.py`만 라우터 등록). 서로 참조(↔)나 역방향 import는 `tests/test_import_rules.py`의 층 표(`ALLOWED_KIT_IMPORTS`)가 막습니다. 표를 바꿔야 하면 팀과 먼저 협의합니다.
+- **공통 모듈끼리도 한 방향으로만 의존합니다:** `core ← users ← auth ← permissions ← account`, `mail`·`llm`·`storage`·`codes`·`crypto`는 `core`만(`users`는 프로필 이미지 때문에 `storage`를 씀). 개인정보를 저장·검색하는 `users`·`auth`·`social`은 `crypto`를 쓸 수 있습니다(계획 23. `users`·`auth`·`social`의 이메일·전화번호 등은 암호화 칸에 저장하고 지문 칸으로 찾음). `social`은 `core`·`users`·`auth`만 쓰고, `social`을 import 하는 킷은 없습니다(`app/api.py`만 라우터 등록). 서로 참조(↔)나 역방향 import는 `tests/test_import_rules.py`의 층 표(`ALLOWED_KIT_IMPORTS`)가 막습니다. 표를 바꿔야 하면 팀과 먼저 협의합니다.
 - `users`에는 HTTP(라우터)를 두지 않습니다. 로그인 확인(auth)과 권한 검사가 함께 필요한 회원 API는 맨 위 `account`가 조합합니다(Spring의 Controller 패키지 역할).
 - **권한 검사는 `core`에 있습니다 (`app.core.principal`).** 요청마다 `auth`의 `load_principal`(앱 전체 공통 의존성)이 토큰과 DB를 확인해 현재 사용자(id, 역할)를 `request.state`에 담고, `require_admin`·`require_role(...)`·`require_login`은 그 값만 읽습니다(Spring의 `SecurityContextHolder` + `@PreAuthorize`). 그래서 어느 킷 모듈이든 `core`만 import 해서 권한을 검사할 수 있고, 역할을 매 요청 DB에서 읽으므로 회수·비활성화가 바로 반영됩니다. 등록이 빠지면 401로 닫힙니다.
 
@@ -156,7 +156,7 @@ backend/
 | 비활성·탈퇴 계정 | 로그인, 토큰 사용, 갱신 모두 거부 |
 | 비밀번호 변경 | 변경 시각(`password_changed_at`) 이전에 발급된 토큰은 거부 → 다른 기기 로그인이 풀림 |
 | 로그아웃 | 이 기기(같은 로그인에서 이어진 토큰 전부)의 리프레시 토큰을 서버에서도 폐기(복사해 둔 토큰도 못 씀). 회전 직후 10초 유예도 새 토큰이 살아 있을 때만 주므로 로그아웃 뒤 옛 쿠키로 다시 들어오지 못함. 다른 기기는 그대로. 비밀번호 변경·재설정은 모든 기기 토큰 폐기 |
-| 아이디 찾기 | `POST /api/auth/id/forgot`에 이메일을 보내면 활성 회원일 때 아이디를 그 메일로 보냄. 가입 여부와 관계없이 항상 `204`. 같은 회원 60초 간격·하루 10회(`MAIL_COOLDOWN_SECONDS`, `MAIL_DAILY_LIMIT`), 넘으면 조용히 건너뜀. 발송 시각만 `auth_login_id_mails`에 남기고 하루 뒤 정리 |
+| 아이디 찾기 | `POST /api/auth/id/forgot`에 이메일을 보내면 활성 회원일 때 아이디를 그 메일로 보냄. 가입 여부와 관계없이 항상 `204`. 같은 회원 60초 간격·하루 10회(`MAIL_COOLDOWN_SECONDS`, `MAIL_DAILY_LIMIT`), 넘으면 조용히 건너뜀. 발송 시각만 `auth_login_id_mails`에 남기고 하루 뒤 정리. 전화번호로도 찾음: `POST /api/auth/id/forgot-by-phone` `{name, phone}` → 이름과 번호(지문)가 맞는 활성 계정마다 **가입한 이메일로** 아이디를 보냄(화면에 보여 주지 않음, 번호를 확인하지 않아서). 항상 `204`, 같은 한도 |
 | 로그인 잠금 | 연속 5회 실패 → 5분 잠금 (`LOGIN_LOCK_*`). 잠긴 동안 `429` + `Retry-After`(초) |
 
 ### 계정 규칙
@@ -171,7 +171,7 @@ backend/
 | 탈퇴 | `is_active=false` + `deactivated_at` 기록(관리자 삭제도 같음). 아이디·이메일은 계속 점유 |
 | 개인정보 파기 | 탈퇴 후 `ACCOUNT_RETENTION_DAYS`(365일) 지나면 `uv run python -m app.users.purge`가 아이디·이메일·이름·선택 항목을 지우고 `deleted_at` 기록(행은 남김). 이어서 `uv run python -m app.auth.cleanup`이 탈퇴 회원의 재설정 토큰과 `EMAIL_VERIFICATION_RETENTION_DAYS`(7일) 지난 인증번호 기록을, `uv run python -m app.social.cleanup`이 소셜 연결을 지움. 모두 `--dry-run` 지원, `.github/workflows/account-purge.yml`이 매일 차례로 실행 |
 | 소셜 로그인 | 서버가 시작하고 끝냄: `GET /auth/{provider}/login` → 공급자 → `GET /auth/{provider}/callback`이 리프레시 쿠키를 심고 프론트 `/auth/{provider}/callback`으로 302 (실패는 `?error=코드`). 연결은 `social_accounts`(`provider`+`provider_user_id` 유일). 소셜로만 가입한 계정은 `users.has_password=false`라 아이디 로그인·비밀번호 변경·탈퇴 확인이 막히고, 비밀번호 찾기로 비밀번호를 만들면 풀림. 명세는 [social-oauth-setup.md](social-oauth-setup.md) |
-| 개인정보 암호화 | `app.crypto`. 다시 꺼내 써야 하는 개인정보는 컬럼 타입 `EncryptedString("테이블.컬럼")`·`EncryptedDate`로 암호화(DB는 `bytea`, 매번 다른 암호문). 찾아야 하는 값은 옆에 지문 칸(`email_index`·`phone_index`, hex 64자)을 두고 `WHERE 지문 = ?`로 찾음(정확히 같은 값만, 부분 검색 불가). 키 2종(암호화·지문)은 환경변수에만, 암호화 키는 버전을 붙여 교체 가능. 복호화 실패는 500 `PII_DECRYPT_FAILED`(로그엔 aad·키 버전만), 키가 없으면 503 `PII_CRYPTO_NOT_CONFIGURED`. 기존 `users` 평문 컬럼은 계획 23 단계로 옮기는 중. 지금(K2)은 평문과 암호화 칸에 같이 씀: 모델의 SQLAlchemy `before_insert`/`before_update` 이벤트(`app/users/pii.py`의 `sync_encrypted_fields`)가 어느 코드로 저장하든 `*_enc`·`email_hash`·`phone_hash`(E.164로 바꿔서)·`birth_year`·`pii_key_version`을 채움. 읽기는 아직 평문. 기존 행은 `python -m app.users.pii_backfill`·`python -m app.social.pii_backfill`(수동 워크플로 `pii-backfill`)로 한 번 채움 |
+| 개인정보 암호화 | `app.crypto`. 다시 꺼내 써야 하는 개인정보는 컬럼 타입 `EncryptedString("테이블.컬럼")`·`EncryptedDate`로 암호화(DB는 `bytea`, 매번 다른 암호문). 찾아야 하는 값은 옆에 지문 칸(`email_index`·`phone_index`, hex 64자)을 두고 `WHERE 지문 = ?`로 찾음(정확히 같은 값만, 부분 검색 불가). 키 2종(암호화·지문)은 환경변수에만, 암호화 키는 버전을 붙여 교체 가능. 복호화 실패는 500 `PII_DECRYPT_FAILED`(로그엔 aad·키 버전만), 키가 없으면 503 `PII_CRYPTO_NOT_CONFIGURED`. 모델의 `user.email`·`phone`·`birth_date`·`postcode`·`address`·`address_detail`(소셜 `email`)은 속성 이름은 그대로, DB 칸은 `*_enc`. 암호화 칸을 `==`·`ilike`·정렬에 쓰면 `TypeError`(조용히 틀린 결과 방지). 찾기는 `email_hash`(UNIQUE, 가입 중복도 막음)·`phone_hash`. 저장할 때 이벤트(`app/users/pii.py`의 `sync_on_write`)가 이메일 소문자·전화번호 E.164·지문·`birth_year`·`pii_key_version`을 맞추고, 한 칸이라도 바뀌면 행 전체를 지금 키로 다시 암호화. 응답의 전화번호는 `010-1234-5678` 모양. 관리자 목록은 가린 이메일(`ki***@example.com`), 상세 `GET /users/{id}`만 전체. 옛 평문 칸(`legacy_*`)은 읽지 않고 되돌리기용으로만 계속 씀, K4에서 삭제. 로그는 `PiiRedactFilter`가 이메일·전화번호 모양을 가림(안전망) |
 | 공통코드 | `app.codes`. 킷·서비스가 `common_code_groups`·`common_codes`를 같이 쓰고 `owner`로 구분(`group_code`는 `owner_`로 시작, DB CHECK). 서비스는 자기 묶음을 자기 마이그레이션에서 넣고, 저장 전에 `require_code(db, 묶음, 값)`, 목록은 `list_codes`. 상태값·권한은 넣지 않음 |
 | 메일 | `app.mail.send_mail`만 사용. 서비스 메일 양식은 킷 파일에 넣지 않고 `app.mail.register_template("접두어_이름", 만드는함수)`로 앱 시작 때 등록(같은 이름은 에러). 라우터에서 `BackgroundTasks`로 응답 뒤에 보냄. 로그에 인증번호·링크를 남기지 않음 실제 발송 설정(도메인·DNS·키)은 [mail-setup.md](mail-setup.md) |
 
@@ -193,7 +193,8 @@ backend/
 | `GET /users/me`, `PATCH /users/me` | 내 정보 조회·수정 (이메일 변경은 새 이메일 증표 필요). `GET /auth/me`는 임시 유지 |
 | `PATCH /users/me/password` `{current_password, new_password}` | 204 (+ 새 리프레시 쿠키) / 400 |
 | `DELETE /users/me` `{password}` | 탈퇴 → 204 |
-| `GET /users?q=&role_id=&status=&page=&size=` | (MASTER) 멤버 검색 → `{items, total, page, size}`. status: `active` / `inactive` / `deleted` |
+| `GET /users?q=&role_id=&status=&page=&size=` | (MASTER) 멤버 검색 → `{items, total, page, size}`. status: `active` / `inactive` / `deleted`. q는 아이디·이름·닉네임 포함 검색, `@`가 있으면 이메일 전체 주소로 정확히. 목록 이메일은 가림 |
+| `GET /users/{id}` | (MASTER) 멤버 한 명 (이메일 전체) / 404 |
 | `GET /users/roles` | 역할 목록 `[{id, name}]` |
 | `PUT /users/{id}/roles` `{roles: [코드]}` | (MASTER) 역할 변경 (여러 개) |
 | `PATCH /users/{id}/active` `{is_active}` | (MASTER) 활성/비활성, 잠금 해제, 탈퇴 취소 |
