@@ -1,17 +1,13 @@
 "use client";
 
-import { Menu, Search, X } from "lucide-react";
+import { X } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-import { LogoMark } from "../brand/LogoMark";
-import { ThemeToggle } from "../theme/ThemeToggle";
-import { meerkitConfig } from "../config";
 import { DocsFooter } from "./DocsFooter";
+import { DocsHeader } from "./DocsHeader";
 import { ScrollTopButton } from "./ScrollTopButton";
 import { AUDIENCES, docGroups, docHref, type Audience, type DocMeta } from "./nav";
 
@@ -87,31 +83,6 @@ function centerActiveLink(container: HTMLElement | null, smooth: boolean) {
   container.scrollTo({ top: Math.max(0, container.scrollTop + delta), behavior: smooth ? "smooth" : "auto" });
 }
 
-// 검색은 /docs/search?q=... 페이지에서 한다. 헤더 입력창은 그 주소로 이동시킨다.
-function HeaderSearch({ initial = "" }: { initial?: string }) {
-  const router = useRouter();
-  const [value, setValue] = useState(initial);
-  return (
-    <form
-      role="search"
-      className="hidden items-center gap-2 rounded-xl border bg-surface px-3 py-1.5 text-[13px] text-muted-foreground sm:flex"
-      onSubmit={(e) => {
-        e.preventDefault();
-        const q = value.trim();
-        router.push(q ? `/docs/search?q=${encodeURIComponent(q)}` : "/docs/search");
-      }}
-    >
-      <Search className="size-3.5" />
-      <input
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        placeholder="Search documentation…"
-        className="w-44 bg-transparent outline-none placeholder:text-muted-foreground"
-      />
-    </form>
-  );
-}
-
 interface DocsShellProps {
   slug?: string;
   query?: string;
@@ -135,33 +106,10 @@ export function DocsShell({ slug, query, children, aside }: DocsShellProps) {
 
   // 헤더에서 지금 보고 있는 구역을 진하게 표시한다
   const section = slug?.startsWith("api-") ? "api" : slug === "components" || docGroups.find((g) => g.label.includes("Components"))?.items.some((i) => i.slug === slug) ? "components" : "docs";
-  const navCls = (active: boolean) => (active ? "font-medium text-foreground" : "hover:text-foreground");
 
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-40 border-b bg-background/85 backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-[1400px] items-center gap-4 px-4 lg:px-6">
-          <button type="button" aria-label="메뉴" className="rounded-lg p-1.5 hover:bg-accent lg:hidden" onClick={() => setOpen(true)}>
-            <Menu className="size-5" />
-          </button>
-          <Link href={meerkitConfig.routes.home} className="flex items-center gap-2 text-sm font-semibold">
-            <LogoMark className="size-8 rounded-xl" /> Meerkit
-          </Link>
-          <nav className="ml-4 hidden items-center gap-5 text-[13px] text-muted-foreground md:flex">
-            <Link href={meerkitConfig.routes.home} className="hover:text-foreground">Home</Link>
-            <Link href="/docs" className={navCls(section === "docs")}>Docs</Link>
-            <Link href="/docs/components" className={navCls(section === "components")}>Components</Link>
-            <Link href="/docs/api-overview" className={navCls(section === "api")}>API</Link>
-          </nav>
-          <div className="ml-auto flex items-center gap-2">
-            <ThemeToggle />
-            <HeaderSearch key={query ?? ""} initial={query} />
-            <Button asChild size="sm" variant="outline">
-              <a href={meerkitConfig.githubUrl} target="_blank" rel="noreferrer">GitHub</a>
-            </Button>
-          </div>
-        </div>
-      </header>
+      <DocsHeader active={section} query={query} onOpenMenu={() => setOpen(true)} />
 
       {open && (
         <div className="fixed inset-0 z-50 lg:hidden">

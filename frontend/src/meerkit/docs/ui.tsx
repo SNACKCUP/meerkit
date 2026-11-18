@@ -94,7 +94,7 @@ const managers = [
 ] as const;
 
 // "npx" 로 시작하는 명령을 패키지 매니저별로 보여 준다.
-export function PkgTabs({ command }: { command: string }) {
+export function PkgTabs({ command, wrap = false }: { command: string; /** 좁은 칸에서 긴 명령이 잘리지 않게 줄바꿈한다 */ wrap?: boolean }) {
   const [active, setActive] = useState<string>("npm");
   const runner = managers.find(([name]) => name === active)![1];
   const text = command.replace(/^npx/, runner);
@@ -115,7 +115,7 @@ export function PkgTabs({ command }: { command: string }) {
         </div>
         <CopyButton text={text} />
       </div>
-      <pre className="mk-scroll overflow-x-auto p-4 font-mono text-[13px] leading-6"><code>{text}</code></pre>
+      <pre className={cn("mk-scroll p-4 font-mono text-[13px] leading-6", wrap ? "whitespace-pre-wrap break-all" : "overflow-x-auto")}><code>{text}</code></pre>
     </div>
   );
 }
