@@ -14,9 +14,7 @@ from sqlalchemy import (
     ForeignKey,
     String,
     UniqueConstraint,
-    event,
     false,
-    inspect,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -44,20 +42,7 @@ class SocialAccount(TimestampMixin, Base):
     # 아래는 마지막 로그인 때 공급자가 준 값 (표시·연결 판단용). users 의 값을 바꾸지 않습니다.
     # 공급자가 준 이메일. 동의하지 않으면 없을 수 있음 (Kakao·Naver). 암호화 칸 email_enc (계획 23, 읽으면 평문)
     email: Mapped[str | None] = mapped_column("email_enc", EncryptedString("social_accounts.email"))
-    # 옛 평문 칸. 읽지 않습니다. K2 코드로 되돌릴 수 있게 같은 값을 계속 쓰고, K4 에서 칸째 지웁니다
-    legacy_email: Mapped[str | None] = mapped_column("email", String(255))
     email_verified: Mapped[bool] = mapped_column(Boolean, server_default=false())  # 공급자가 검증을 보장할 때만 true
     name: Mapped[str | None] = mapped_column(String(50))
     profile_image_url: Mapped[str | None] = mapped_column(String(500))  # 공급자 주소 그대로 (저장소에 복사하지 않음)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-
-
-@event.listens_for(SocialAccount, "before_insert")
-def _copy_legacy_email_on_insert(mapper, connection, account: SocialAccount) -> None:
-    account.legacy_email = account.email
-
-
-@event.listens_for(SocialAccount, "before_update")
-def _copy_legacy_email_on_update(mapper, connection, account: SocialAccount) -> None:
-    if inspect(account).attrs.email.history.has_changes():
-        account.legacy_email = account.email

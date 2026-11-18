@@ -10,7 +10,6 @@ from datetime import date, datetime
 
 from sqlalchemy import (
     Boolean,
-    Date,
     DateTime,
     ForeignKey,
     Integer,
@@ -81,20 +80,12 @@ class User(TimestampMixin, Base):
 
     # 개인정보 암호화 (계획 23). DB 에는 암호문(bytea)만, 읽으면 평문으로 풀립니다. 괄호 안 문자열(aad)은 바꾸지 않습니다.
     # 암호화 칸은 WHERE·정렬에 쓸 수 없어(쓰면 TypeError) 찾을 때는 지문 칸을 씁니다: email_index()·phone_index()
-    # 저장할 때 맨 아래 이벤트(app.users.pii)가 지문·birth_year·키 버전과 옛 평문 칸을 자동으로 맞춥니다.
+    # 저장할 때 맨 아래 이벤트(app.users.pii)가 지문·birth_year·키 버전을 자동으로 맞춥니다.
     email_hash: Mapped[str] = mapped_column(String(64), unique=True)  # 이메일 지문 (가입 중복은 이 UNIQUE 가 막음)
     phone_hash: Mapped[str | None] = mapped_column(String(64), index=True)  # 형식이 틀린 옛 번호는 비어 있음. 중복 허용
     phone_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # SMS 인증 (향후)
     birth_year: Mapped[int | None] = mapped_column(SmallInteger)  # 나이 통계용 평문 (나이는 조회 때 계산)
     pii_key_version: Mapped[int] = mapped_column(SmallInteger)  # 이 행을 암호화한 키 버전
-
-    # 옛 평문 칸 (K2 이전). 읽지 않습니다. K2 코드로 되돌릴 수 있게 같은 값을 계속 쓰고, K4 에서 칸째 지웁니다.
-    legacy_email: Mapped[str] = mapped_column("email", String(255), unique=True, index=True)
-    legacy_phone: Mapped[str | None] = mapped_column("phone", String(20))
-    legacy_postcode: Mapped[str | None] = mapped_column("postcode", String(10))
-    legacy_address: Mapped[str | None] = mapped_column("address", String(255))
-    legacy_address_detail: Mapped[str | None] = mapped_column("address_detail", String(255))
-    legacy_birth_date: Mapped[date | None] = mapped_column("birth_date", Date)
 
     email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # 이메일 인증을 마친 시각
     # 로그인 잠금: 연속 실패 횟수와 잠금이 풀리는 시각

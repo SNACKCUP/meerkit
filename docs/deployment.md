@@ -56,7 +56,7 @@ Settings → Environments → **New environment** `production`:
 
 탈퇴 계정 정리(`account-purge`, 매일 03:00)는 저장소 Secret `DATABASE_URL`에 같은 주소를 넣으면 시작됩니다.
 
-Settings → Secrets and variables → Actions → **Repository secrets**에 개인정보 암호화 키 2개도 넣습니다. 회원을 저장하는 워크플로(`account-purge`, `seed-admin`, `pii-backfill`)가 씁니다.
+Settings → Secrets and variables → Actions → **Repository secrets**에 개인정보 암호화 키 2개도 넣습니다. 회원을 저장하는 워크플로(`account-purge`, `seed-admin`)가 씁니다.
 
 | 이름 | 값 |
 | --- | --- |
@@ -157,30 +157,13 @@ Environment `production`에 Secret `SEED_ADMIN_PASSWORD`, Variable `SEED_ADMIN_U
 | 마이그레이션을 되돌려야 함 | 운영 DB 주소로 `uv run alembic downgrade -1` (데이터가 지워지는 변경인지 먼저 확인) |
 | 키가 샘 | 해당 업체에서 새 키 → Render·GitHub 값 교체·재배포 → 예전 키 삭제 |
 
-## 개인정보 암호화 칸 채우기 (계획 23 K2, 한 번만)
+## 개인정보 암호화 전환 기록 (계획 23)
 
-K2(암호화 칸 추가)가 들어간 코드를 처음 배포할 때만 합니다. 새로 가입·수정하는 회원은 서버가 알아서 채우고, 이미 있던 회원은 아래로 채웁니다.
+MeerKit은 계획 23의 4단계를 모두 거쳤습니다 (K4 배포로 끝남): 키 등록 → 암호화 칸 추가와 채우기(K2) → 읽기 전환(K3, 마이그레이션 `48d0967a81f8`) → 평문 칸 삭제(K4, `08755ebea028`). 지금 테이블에는 평문 이메일·전화번호·생년월일·주소 칸이 없습니다.
 
-1. 저장소 Secret `PII_ENCRYPTION_KEYS`·`PII_HMAC_KEY`가 있는지 확인 (2단계)
-2. Actions → `deploy` → Run workflow (마이그레이션 `cfe9930b9cfa`로 칸이 생기고 새 코드가 배포됨)
-3. Actions → `pii-backfill` → Run workflow, `dry_run` 켠 채로 → 로그에서 남은 건수 확인
-4. 다시 `pii-backfill`, `dry_run` 끄고 실행 → 로그 마지막에 `남은 행 0건` 확인
-   - `형식이 틀려 지문 없는 전화번호 N건`은 예전에 잘못 입력된 번호입니다. 암호화는 되지만 전화번호로 찾을 수 없습니다. 회원이 번호를 다시 저장하면 고쳐집니다
-5. 여러 번 실행해도 안전합니다 (이미 채운 행은 건너뜀). 로그에는 건수와 id만 나옵니다
-
-되돌리기: 이 단계는 평문을 지우지 않으므로 이전 코드로 되돌려도 됩니다. 칸까지 지우려면 `alembic downgrade 72d61ade7e67`.
-
-## 개인정보 읽기 전환 (계획 23 K3, 한 번만)
-
-K3가 들어간 코드를 처음 배포할 때입니다. 이 배포부터 서버는 암호화 칸을 읽고 지문 칸으로 찾습니다.
-
-1. K2 단계가 끝났는지 확인: `pii-backfill` dry_run 로그가 `남은 행 0건`
-2. Actions → `deploy`. 마이그레이션 `48d0967a81f8`이 `email_hash` UNIQUE·NOT NULL을 겁니다
-   - 채우지 않은 회원이 있으면 마이그레이션이 "암호화 칸을 채우지 않은 회원이 N명" 오류로 멈추고 배포도 하지 않습니다. `pii-backfill`을 실행한 뒤 다시 `deploy`
-   - K2 이전에 만든 이메일 인증번호 행(이미 만료됨)은 마이그레이션이 지웁니다
-3. 확인: 로그인, 내 정보(전화번호가 `010-1234-5678` 모양), 관리자 회원 목록(이메일이 가려짐), 이메일 전체 주소로 회원 검색, 아이디 찾기
-
-되돌리기: 옛 평문 칸에도 같은 값을 계속 쓰므로 K2 코드로 되돌려도 됩니다 (`alembic downgrade cfe9930b9cfa` 후 이전 코드 배포). 옛 평문 칸 삭제(K4)는 1주쯤 문제가 없을 때 따로 합니다.
+- 새로 만드는 DB(이 킷을 가져다 쓰는 서비스)는 처음부터 이 상태로 만들어지므로 따로 할 일이 없습니다.
+- K2 이전 데이터가 들어 있는 DB를 올린다면, K3 마이그레이션이 "암호화 칸을 채우지 않은 회원" 오류로 멈춥니다. 그 DB는 K3 시점 코드(`app.users.pii_backfill`가 있는 버전, 태그나 PR #55 병합 커밋)로 채우기를 먼저 실행하세요.
+- K4는 되돌릴 수 없습니다 (downgrade는 빈 칸만 다시 만듦). Supabase 백업에는 지운 평문이 백업 보관 기간 동안 남습니다.
 
 ## 운영 중 할 일
 

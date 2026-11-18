@@ -32,7 +32,7 @@ from app.core.security import (
     verify_dummy_password,
     verify_password,
 )
-from app.crypto import InvalidPhoneError
+from app.crypto import InvalidPhoneError, email_index
 from app.mail import send_mail
 from app.users import repository
 from app.users import service as user_service
@@ -236,7 +236,7 @@ def send_email_code(db: Session, tasks: BackgroundTasks, email: str) -> None:
     auth_repository.add(
         db,
         EmailVerification(
-            email=email,
+            email_hash=email_index(email),
             code_hash=hash_secret(code),
             expires_at=now + timedelta(minutes=settings.email_code_expire_minutes),
             created_at=now,
@@ -281,7 +281,7 @@ def issue_verified_email_proof(db: Session, email: str) -> str:
         raise AuthError("EMAIL_TAKEN", "이미 가입된 이메일입니다.")
     now = _now()
     row = EmailVerification(
-        email=email,
+        email_hash=email_index(email),
         code_hash=hash_secret(generate_token()),  # 입력할 번호가 없으므로 아무도 모르는 값
         expires_at=now,
         verified_at=now,
