@@ -10,7 +10,7 @@ PROFILE = {
     "address": "서울 강남구 테헤란로 123",
     "address_detail": "4층 401호",
     "birth_date": date(1995, 4, 12),
-    "gender": "female",
+    "gender": "FEMALE",
     "nickname": "행복한미어캣",
 }
 
@@ -28,7 +28,7 @@ def test_list_masks_personal_fields_and_detail_shows_all(client, make_user, logi
     assert item["address_detail"] == "***"
     assert item["birth_date"] == "1995-**-**"
     # 암호화하지 않는 항목은 그대로
-    assert (item["name"], item["nickname"], item["gender"]) == ("회원하나", "행복한미어캣", "female")
+    assert (item["name"], item["nickname"], item["gender"]) == ("회원하나", "행복한미어캣", "FEMALE")
     for value in ("1234", "테헤란로", "401호", "04-12", "06236"):
         assert value not in str(item)
 

@@ -43,6 +43,12 @@ def get_active_group(db: Session, group_code: str) -> CodeGroup:
     return group
 
 
+def is_public_group(db: Session, group_code: str) -> bool:
+    """로그인 전에도 읽을 수 있는 켜진 묶음인지 (is_public)"""
+    group = repository.get_group(db, group_code)
+    return group is not None and group.is_active and group.is_public
+
+
 def list_codes(db: Session, group_code: str, *, include_inactive: bool = False) -> list[Code]:
     """한 묶음의 값 목록 (sort_order 순). 묶음이 꺼져 있으면 켜진 값도 없는 것으로 봅니다.
 

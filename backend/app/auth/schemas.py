@@ -53,7 +53,7 @@ class ProfileFields(BaseModel):
     address_detail: str | None = Field(default=None, max_length=255, description="상세 주소", examples=["4층 401호"])
     birth_date: date | None = Field(default=None, description="생년월일 (YYYY-MM-DD)", examples=["1995-04-12"])
     gender: str | None = Field(
-        default=None, max_length=10, description="성별: male, female, none(선택 안 함)", examples=["female"]
+        default=None, max_length=10, description="성별: 공통코드 MEERKIT_GENDER 값 MALE(남성), FEMALE(여성), NONE(선택안함)", examples=["FEMALE"]
     )
 
     _blank_to_none = field_validator(*OPTIONAL_PROFILE_FIELDS, mode="before")(blank_to_none)

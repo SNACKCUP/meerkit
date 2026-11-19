@@ -24,7 +24,7 @@ PROFILE = {
     "address": "서울 강남구 테헤란로 123",
     "address_detail": "4층 401호",
     "birth_date": date(1995, 4, 12),
-    "gender": "female",
+    "gender": "FEMALE",
 }
 
 
@@ -59,7 +59,7 @@ def test_signup_stores_ciphertext_and_reads_plaintext(db):
     assert decrypt(row["postcode_enc"], "users.postcode") == "06236"
     assert decrypt(row["address_enc"], "users.address") == "서울 강남구 테헤란로 123"
     assert decrypt(row["address_detail_enc"], "users.address_detail") == "4층 401호"
-    assert row["gender"] == "female"  # 성별은 통계용 평문 (D5)
+    assert row["gender"] == "FEMALE"  # 성별은 통계용 평문 (D5)
     assert row["pii_key_version"] == 1
     for col in ("email_enc", "phone_enc", "address_enc", "postcode_enc"):
         raw = bytes(row[col])

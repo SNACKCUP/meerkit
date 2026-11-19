@@ -9,6 +9,7 @@ import type { AddressType, SignupOptionalField } from "../../define-config";
 import { DatePicker } from "../../date";
 import { PhoneInput, PhoneInputSplit } from "../../phone";
 import type { User } from "../../types";
+import { useGenderCodes } from "../queries";
 import { AddressField, AddressFieldLabel } from "./AddressField";
 import { NicknameInput } from "./NicknameInput";
 import type { AddressSearchProvider, AddressSearchResult } from "./address-search";
@@ -28,10 +29,11 @@ export const emptyOptionalValues: OptionalValues = {
   nickname: "", phone: "", postcode: "", address: "", address_detail: "", birth_date: "", gender: "",
 };
 
+// 성별 기본 목록. 화면은 공통코드 MEERKIT_GENDER 를 읽어 그리고, 읽기 전·실패하면 이 목록을 쓴다 (value = code)
 export const GENDER_OPTIONS = [
-  { value: "male", label: "남성" },
-  { value: "female", label: "여성" },
-  { value: "none", label: "선택 안 함" },
+  { value: "MALE", label: "남성" },
+  { value: "FEMALE", label: "여성" },
+  { value: "NONE", label: "선택 안 함" },
 ] as const;
 
 export const NICKNAME_RANGE = { min: 2, max: 12 } as const;
@@ -124,11 +126,13 @@ const NicknameField = memo(function NicknameField({ idPrefix, opt, onChange, val
 });
 
 const GenderField = memo(function GenderField({ idPrefix, opt, onChange, value }: FieldCommon & { value: string }) {
+  const { data } = useGenderCodes();
+  const options = data?.codes.length ? data.codes.map((c) => ({ value: c.code, label: c.label })) : GENDER_OPTIONS;
   return (
     <div className="mk-swap grid gap-2">
       <Label>성별{opt}</Label>
       <RadioGroup className="grid-flow-col justify-start gap-5" value={value} onValueChange={(v) => onChange({ gender: v })}>
-        {GENDER_OPTIONS.map((o) => (
+        {options.map((o) => (
           <div key={o.value} className="flex items-center gap-2">
             <RadioGroupItem id={`${idPrefix}-gender-${o.value}`} value={o.value} />
             <Label htmlFor={`${idPrefix}-gender-${o.value}`} className="cursor-pointer font-normal">{o.label}</Label>

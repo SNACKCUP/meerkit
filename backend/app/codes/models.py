@@ -10,7 +10,16 @@ owner 로 누구의 코드인지 구분합니다: 킷은 MEERKIT, 서비스는 S
 넣지 않는 것: 코드가 흐름을 바꾸는 상태값·권한(문서 상태, 프로젝트 역할). 그런 값은 각 테이블의 CHECK 로 둡니다.
 """
 
-from sqlalchemy import Boolean, CheckConstraint, ForeignKey, Integer, String, Text, true
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    false,
+    true,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -31,6 +40,8 @@ class CodeGroup(TimestampMixin, Base):
     name: Mapped[str] = mapped_column(String(100))  # 화면 이름 (요구사항 구분)
     description: Mapped[str | None] = mapped_column(Text)
     is_active: Mapped[bool] = mapped_column(Boolean, server_default=true())
+    # true 면 로그인 전에도 GET /api/codes/{group_code} 로 읽을 수 있음 (가입 화면 선택지 등). 마이그레이션으로만 켭니다
+    is_public: Mapped[bool] = mapped_column(Boolean, server_default=false())
 
     codes: Mapped[list["Code"]] = relationship(
         back_populates="group", order_by="Code.sort_order, Code.code", passive_deletes=True
