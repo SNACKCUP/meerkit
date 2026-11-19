@@ -1,0 +1,62 @@
+# PR이 열리면(또는 다시 열리거나, 초안에서 리뷰 준비로 바뀌면) 디스코드 채널로 알림을 보냅니다.
+#
+# 준비 (저장소 Settings → Secrets and variables → Actions):
+#   - Secret  DISCORD_WEBHOOK_URL  알림 받을 디스코드 채널의 웹훅 주소 (채널 설정 → 연동 → 웹후크)
+# 웹훅 주소는 그 채널에 아무나 글을 쓸 수 있게 하는 비밀 값입니다. 코드나 PR 본문에 적지 마세요.
+# Secret이 없으면 아무것도 하지 않고 성공으로 끝납니다. (외부 포크에서 온 PR도 Secret을 받지 못해 알림이 가지 않습니다.)
+#
+# - PR 제목은 셸에 끼워 넣지 않고 환경 변수로만 넘깁니다. 제목에 따옴표나 $( ) 같은 글자가 있어도 명령으로 실행되지 않습니다.
+# - 제목에 @everyone, @here 가 있어도 멘션되지 않게 합니다 (allowed_mentions).
+name: discord-pr-notify
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review]
+
+permissions: {}
+
+jobs:
+  notify:
+    # 초안(draft) PR은 리뷰 준비가 될 때(ready_for_review) 알립니다.
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    env:
+      WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+    steps:
+      - name: 디스코드로 보내기
+        if: env.WEBHOOK != ''
+        env:
+          ACTION: ${{ github.event.action }}
+          REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.pull_request.number }}
+          TITLE: ${{ github.event.pull_request.title }}
+          URL: ${{ github.event.pull_request.html_url }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: |
+          python3 - <<'PY'
+          import json, os, urllib.request
+
+          label = {"opened": "새 PR", "reopened": "PR 다시 열림", "ready_for_review": "PR 리뷰 준비"}.get(
+              os.environ["ACTION"], "PR"
+          )
+          title = os.environ["TITLE"].replace("\n", " ")
+          if len(title) > 200:
+              title = title[:200] + "…"
+          content = "🔔 **{repo}** {label} #{number}\n{title}\n{url}  (by {author})".format(
+              repo=os.environ["REPO"],
+              label=label,
+              number=os.environ["NUMBER"],
+              title=title,
+              url=os.environ["URL"],
+              author=os.environ["AUTHOR"],
+          )
+          body = json.dumps({"content": content, "allowed_mentions": {"parse": []}}).encode("utf-8")
+          req = urllib.request.Request(
+              os.environ["WEBHOOK"],
+              data=body,
+              headers={"Content-Type": "application/json", "User-Agent": "discord-pr-notify"},
+              method="POST",
+          )
+          with urllib.request.urlopen(req, timeout=15) as res:
+              print("Discord 응답:", res.status)
+          PY
