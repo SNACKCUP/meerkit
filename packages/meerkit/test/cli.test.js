@@ -104,6 +104,8 @@ test("diagnose: 로그에서 흔한 원인을 알아본다", () => {
   const auth = diagnose(['FATAL: password authentication failed for user "starter"']).join();
   assert.match(auth, /lsof/);
   assert.match(auth, /down -v/);
+  assert.match(diagnose(["FATAL:  database files are incompatible with server"]).join(), /db reset/);
+  assert.match(diagnose(["container meerkit-db-1 exited (1)"]).join(), /16에서 17/);
   assert.deepEqual(diagnose(["알 수 없는 오류"]), []);
   assert.deepEqual(diagnose(), []);
 });

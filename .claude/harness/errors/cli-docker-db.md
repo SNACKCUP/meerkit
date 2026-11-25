@@ -1,6 +1,6 @@
 # CLI의 Docker·로컬 DB 주의점
 
-> 대상: `packages/meerkit/` (`checks.js`, `setup.js`, `start.js`, `db.js`)와 루트 `docker-compose.yml`. 생성된 프로젝트와 저장소를 Fork한 프로젝트의 로컬 DB는 `docker compose`의 PostgreSQL 16(포트 5432)이다.
+> 대상: `packages/meerkit/` (`checks.js`, `setup.js`, `start.js`, `db.js`)와 루트 `docker-compose.yml`. 생성된 프로젝트와 저장소를 Fork한 프로젝트의 로컬 DB는 `docker compose`의 PostgreSQL 17(포트 5432)이다.
 
 ## Docker 상태 진단
 
@@ -13,6 +13,7 @@
 - Always: DB 컨테이너 healthcheck는 `pg_isready -h 127.0.0.1 -U starter -d starter`처럼 TCP로 확인한다. (이유: 초기화용 임시 서버는 TCP를 받지 않아서, 소켓만 보는 확인은 너무 일찍 통과한다)
 - Never: DB가 "시작됨"이라는 사실만으로 마이그레이션을 시작하지 않는다. `healthy`가 될 때까지 기다린다. (이유: 첫 `setup`의 마이그레이션이 `server closed the connection unexpectedly`로 4번 중 1번꼴로 실패했다)
 - Always: `docker-compose.yml`의 healthcheck가 유지되는지 `cli.test.js`의 확인을 통과시킨다.
+- Always: DB 이미지의 주 버전(`postgres:17`)은 운영(Supabase)·CI(`backend-ci.yml`)와 같게 둔다. 주 버전을 바꾸면 이전 볼륨이 열리지 않으므로(`database files are incompatible with server`, 컨테이너가 바로 꺼짐) README에 초기화(`db reset`)·덤프 복원 순서를 같이 쓰고 `setup.js`의 `diagnose`가 안내하게 한다. (이유: 처음 compose 기본값 16이 그대로 남아 운영 17과 어긋났고, 16→17 변경 때 기존 볼륨이 시작하지 못했다)
 
 ## DB 포트 소유
 
