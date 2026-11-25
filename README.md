@@ -73,7 +73,7 @@ npx @snackcup/meerkit setup
 <summary>펼치기</summary>
 
 ```bash
-docker compose up -d db                  # 루트: PostgreSQL 16
+docker compose up -d db                  # 루트: PostgreSQL 17
 
 cd backend
 cp .env.example .env                     # 필요한 값 채우기
@@ -89,6 +89,26 @@ npm run dev
 ```
 
 </details>
+
+### PostgreSQL 16에서 17로 옮기기 (이전에 DB를 만든 적이 있을 때)
+
+로컬 DB 이미지가 `postgres:16`에서 `postgres:17`로 바뀌었습니다(운영 Supabase와 CI가 17). 16으로 만든 볼륨은 17에서 열리지 않아서, DB 컨테이너가 켜지자마자 꺼지고 `docker compose logs db`에 `database files are incompatible with server`가 보입니다. 둘 중 하나를 고르세요.
+
+- **데이터가 필요 없을 때 (보통 이쪽)**: `npx @snackcup/meerkit db reset` (또는 `docker compose down -v` 후 `npx @snackcup/meerkit setup`). 볼륨을 지우고 17로 새로 만든 뒤 마이그레이션과 관리자 계정을 다시 넣습니다.
+- **데이터를 옮겨야 할 때**: 이미지를 바꾸기 전에(아직 16일 때) 덤프를 받고, 볼륨을 지운 뒤 17에서 되살립니다.
+
+  ```bash
+  # 1) 아직 16으로 떠 있을 때 덤프 (이미 17로 바꿨다면 docker-compose.yml의 image를 잠시 postgres:16으로 되돌리고 실행)
+  docker compose up -d --wait db
+  docker compose exec -T db pg_dump -U starter -d starter --no-owner > meerkit-pg16.sql
+  # 2) 볼륨 삭제 후 17로 새로 켜기 (image: postgres:17)
+  docker compose down -v
+  docker compose up -d --wait db
+  # 3) 되살리기 (alembic upgrade head는 하지 않습니다. 덤프에 alembic_version까지 들어 있습니다)
+  docker compose exec -T db psql -U starter -d starter -v ON_ERROR_STOP=1 < meerkit-pg16.sql
+  ```
+
+  덤프 파일에는 회원 정보가 들어 있으니 저장소에 넣지 말고 다 쓰면 지우세요.
 
 ### 대체 DB: Supabase CLI (선택)
 
